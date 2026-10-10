@@ -8,7 +8,6 @@ final class NativeShellViewController: UITabBarController,
   private let bridge: NativeShellBridge
   private var flutterConstraints: [NSLayoutConstraint] = []
   private var actionButton: UIButton!
-  private var actionButtonBottomToTabBar: NSLayoutConstraint!
   private var actionButtonBottomToSafeArea: NSLayoutConstraint!
 
   private var isTabBarVisible = true
@@ -42,6 +41,7 @@ final class NativeShellViewController: UITabBarController,
   override func viewDidLayoutSubviews() {
     super.viewDidLayoutSubviews()
     syncSafeAreaInsets()
+    syncActionButtonPosition()
   }
 
   private func makeSlot(title: String, symbol: String) -> UIViewController {
@@ -84,10 +84,6 @@ final class NativeShellViewController: UITabBarController,
     actionButton = makeGlassButton(symbol: "plus", accessibilityLabel: "")
     view.addSubview(actionButton)
 
-    actionButtonBottomToTabBar = actionButton.bottomAnchor.constraint(
-      equalTo: tabBar.topAnchor,
-      constant: -16
-    )
     actionButtonBottomToSafeArea = actionButton.bottomAnchor.constraint(
       equalTo: view.safeAreaLayoutGuide.bottomAnchor,
       constant: -16
@@ -100,7 +96,7 @@ final class NativeShellViewController: UITabBarController,
         equalTo: view.safeAreaLayoutGuide.trailingAnchor,
         constant: -16
       ),
-      actionButtonBottomToTabBar,
+      actionButtonBottomToSafeArea,
     ])
 
     updateActionVisibility()
@@ -134,15 +130,16 @@ final class NativeShellViewController: UITabBarController,
     return button
   }
 
-  /// The tab bar reserves part of the bottom safe area for the Flutter content it sits next to.
-  /// Once the chrome goes away that reservation has to go with it, or pages keep leaving a band the
-  /// height of a tab bar at the bottom.
-  ///
-  /// The adjustment belongs to the slot that hosts the Flutter view, not to the Flutter view
-  /// controller itself: UIKit ignores a negative `additionalSafeAreaInsets` on that controller, so
-  /// the value never reaches the engine and the content below the hidden chrome stays inset.
+  /// iOS 17 keeps the legacy bottom bar's safe-area reservation when it is
+  /// hidden directly. Apply that workaround only to the slot hosting Flutter.
   private func syncSafeAreaInsets() {
-    let adjustment = isTabBarVisible ? 0 : -tabBarHeightAboveSafeArea()
+    let adjustment: CGFloat
+    if #available(iOS 18.0, *) {
+      // setTabBarHidden updates the content safe area for both top and bottom tabs.
+      adjustment = 0
+    } else {
+      adjustment = isTabBarVisible ? 0 : -bottomTabBarOverlap()
+    }
     let host = flutterViewController.parent
 
     for slot in viewControllers ?? [] {
@@ -157,10 +154,29 @@ final class NativeShellViewController: UITabBarController,
     }
   }
 
-  /// How much height the tab bar takes up on top of the home-indicator strip, which is the part of
-  /// the bottom safe area that has to disappear together with the chrome.
-  private func tabBarHeightAboveSafeArea() -> CGFloat {
-    max(0, tabBar.frame.height - view.safeAreaInsets.bottom)
+  /// iPad's top tab bar may not be in this view hierarchy. Never constrain our
+  /// button to it; measure only a bottom bar that actually overlaps our safe area.
+  private func bottomTabBarOverlap() -> CGFloat {
+    guard tabBar.isDescendant(of: view) else { return 0 }
+    let barFrame = tabBar.convert(tabBar.bounds, to: view)
+    let safeBottom = view.safeAreaLayoutGuide.layoutFrame.maxY
+    guard barFrame.maxY >= safeBottom else { return 0 }
+    return max(0, safeBottom - barFrame.minY)
+  }
+
+  private func syncActionButtonPosition() {
+    let overlap = isTabBarVisible ? bottomTabBarOverlap() : 0
+    actionButtonBottomToSafeArea?.constant = -16 - overlap
+  }
+
+  func tabBarController(
+    _ tabBarController: UITabBarController,
+    shouldSelect viewController: UIViewController
+  ) -> Bool {
+    // Move Flutter before UIKit forwards appearance to the new tab. Moving it
+    // in didSelect can leave its rendering surface paused after the old tab hides.
+    attachFlutter(to: viewController)
+    return true
   }
 
   func tabBarController(
@@ -205,8 +221,8 @@ final class NativeShellViewController: UITabBarController,
 
   func nativeShell(setSelectedIndex index: Int) {
     guard let controllers = viewControllers, controllers.indices.contains(index) else { return }
-    if selectedIndex != index { selectedIndex = index }
     attachFlutter(to: controllers[index])
+    if selectedIndex != index { selectedIndex = index }
   }
 
   func nativeShell(setSettingsBadge visible: Bool) {
@@ -218,14 +234,16 @@ final class NativeShellViewController: UITabBarController,
     isTabBarVisible = tabBarVisible
     isDimmed = dimmed
 
-    tabBar.isHidden = !tabBarVisible
+    if #available(iOS 18.0, *) {
+      setTabBarHidden(!tabBarVisible, animated: false)
+    } else {
+      tabBar.isHidden = !tabBarVisible
+    }
     tabBar.isUserInteractionEnabled = tabBarVisible && !dimmed
     tabBar.alpha = dimmed ? 0.20 : 1.0
 
-    actionButtonBottomToTabBar.isActive = tabBarVisible
-    actionButtonBottomToSafeArea.isActive = !tabBarVisible
-
     syncSafeAreaInsets()
+    syncActionButtonPosition()
     updateActionVisibility()
     view.layoutIfNeeded()
   }
