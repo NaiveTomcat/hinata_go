@@ -35,6 +35,36 @@ class RunnerTests: XCTestCase {
   }
 
   @MainActor
+  func testFlutterSurfaceStaysVisibleWithUITabSelection() async throws {
+    guard #available(iOS 18.0, *) else { throw XCTSkip("UITab requires iOS 18") }
+    let window = try XCTUnwrap(UIApplication.shared.connectedScenes
+      .compactMap { ($0 as? UIWindowScene)?.keyWindow }.first)
+    let shell = try XCTUnwrap(window.rootViewController as? NativeShellViewController)
+    let flutter = try XCTUnwrap(shell.selectedViewController?.children
+      .compactMap { $0 as? FlutterViewController }.first)
+    let delegate = try XCTUnwrap(shell.delegate)
+    defer { shell.nativeShell(setSelectedIndex: 0) }
+
+    for index in [1, 2, 0] {
+      let target = try XCTUnwrap(shell.viewControllers?[index])
+      let tab = UITab(title: "Tab \(index)", image: nil, identifier: "test-\(index)") { _ in
+        target
+      }
+      // iOS 27 can call this entry point without calling shouldSelect UIViewController.
+      let allowed = try XCTUnwrap(delegate.tabBarController?(shell, shouldSelectTab: tab),
+        "The UITab selection callback must prepare Flutter before UIKit switches tabs")
+      XCTAssertTrue(allowed)
+      XCTAssertTrue(flutter.parent === target)
+      shell.selectedViewController = target
+      delegate.tabBarController?(shell, didSelect: target)
+      shell.view.layoutIfNeeded()
+      let rendering = XCTNSPredicateExpectation(
+        predicate: NSPredicate { _, _ in flutter.isDisplayingFlutterUI }, object: flutter)
+      await fulfillment(of: [rendering], timeout: 10)
+    }
+  }
+
+  @MainActor
   func testNativeShellActionLayoutAcrossTabsAndChromeChanges() throws {
     let window = try XCTUnwrap(UIApplication.shared.connectedScenes
       .compactMap { ($0 as? UIWindowScene)?.keyWindow }.first)

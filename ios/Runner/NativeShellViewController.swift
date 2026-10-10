@@ -179,6 +179,16 @@ final class NativeShellViewController: UITabBarController,
     return true
   }
 
+  @available(iOS 18.0, *)
+  func tabBarController(
+    _ tabBarController: UITabBarController,
+    shouldSelectTab tab: UITab
+  ) -> Bool {
+    // iOS 27 can use the UITab callback without invoking the legacy callback.
+    guard let viewController = tab.viewController else { return true }
+    return self.tabBarController(tabBarController, shouldSelect: viewController)
+  }
+
   func tabBarController(
     _ tabBarController: UITabBarController,
     didSelect viewController: UIViewController
