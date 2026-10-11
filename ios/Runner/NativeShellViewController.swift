@@ -9,6 +9,7 @@ final class NativeShellViewController: UITabBarController,
   private var flutterConstraints: [NSLayoutConstraint] = []
   private var actionButton: UIButton!
   private var actionButtonBottomToSafeArea: NSLayoutConstraint!
+  private var isApplyingFlutterSelection = false
 
   private var isTabBarVisible = true
   private var isDimmed = false
@@ -189,6 +190,20 @@ final class NativeShellViewController: UITabBarController,
     return self.tabBarController(tabBarController, shouldSelect: viewController)
   }
 
+  @available(iOS 18.0, *)
+  func tabBarController(
+    _ tabBarController: UITabBarController,
+    didSelectTab selectedTab: UITab,
+    previousTab: UITab?
+  ) {
+    // UIKit can invoke this instead of didSelect UIViewController.
+    guard !isApplyingFlutterSelection else { return }
+    // Notify Flutter after selection, not from shouldSelectTab.
+    guard let controller = selectedTab.viewController
+      ?? tabBarController.selectedViewController else { return }
+    self.tabBarController(tabBarController, didSelect: controller)
+  }
+
   func tabBarController(
     _ tabBarController: UITabBarController,
     didSelect viewController: UIViewController
@@ -232,7 +247,11 @@ final class NativeShellViewController: UITabBarController,
   func nativeShell(setSelectedIndex index: Int) {
     guard let controllers = viewControllers, controllers.indices.contains(index) else { return }
     attachFlutter(to: controllers[index])
-    if selectedIndex != index { selectedIndex = index }
+    if selectedIndex != index {
+      isApplyingFlutterSelection = true
+      defer { isApplyingFlutterSelection = false }
+      selectedIndex = index
+    }
   }
 
   func nativeShell(setSettingsBadge visible: Bool) {

@@ -44,6 +44,7 @@ class RunnerTests: XCTestCase {
       .compactMap { $0 as? FlutterViewController }.first)
     let delegate = try XCTUnwrap(shell.delegate)
     defer { shell.nativeShell(setSelectedIndex: 0) }
+    var previousTab: UITab?
 
     for index in [1, 2, 0] {
       let target = try XCTUnwrap(shell.viewControllers?[index])
@@ -56,7 +57,11 @@ class RunnerTests: XCTestCase {
       XCTAssertTrue(allowed)
       XCTAssertTrue(flutter.parent === target)
       shell.selectedViewController = target
-      delegate.tabBarController?(shell, didSelect: target)
+      // Exercise the modern completion callback, not the legacy one.
+      let notified = delegate.tabBarController?(
+        shell, didSelectTab: tab, previousTab: previousTab)
+      XCTAssertNotNil(notified, "The UITab completion callback must be implemented")
+      previousTab = tab
       shell.view.layoutIfNeeded()
       let rendering = XCTNSPredicateExpectation(
         predicate: NSPredicate { _, _ in flutter.isDisplayingFlutterUI }, object: flutter)
