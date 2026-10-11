@@ -154,5 +154,4 @@ void main() {
     await tapNativeTab(0);
     expect(router.routeInformationProvider.value.uri.path, '/scan');
   });
-
 }

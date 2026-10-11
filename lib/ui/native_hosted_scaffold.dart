@@ -50,8 +50,10 @@ class _NativeHostedScaffoldState extends ConsumerState<NativeHostedScaffold> {
         final index = arguments['index'] as int;
         if (index >= 0 && index < 3) {
           final previousIndex = widget.navigationShell.currentIndex;
-          debugPrint('[NativeShell] Dart received selectTopLevel=$index '
-              'current=$previousIndex');
+          debugPrint(
+            '[NativeShell] Dart received selectTopLevel=$index '
+            'current=$previousIndex',
+          );
           widget.navigationShell.goBranch(
             index,
             initialLocation: index == previousIndex,
@@ -59,8 +61,10 @@ class _NativeHostedScaffoldState extends ConsumerState<NativeHostedScaffold> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             final selected = widget.navigationShell.currentIndex;
-            debugPrint('[NativeShell] Dart after routing index=$selected '
-                'requested=$index');
+            debugPrint(
+              '[NativeShell] Dart after routing index=$selected '
+              'requested=$index',
+            );
             // Synchronize UIKit even when a route changes without a
             // NativeHostedScaffold widget identity change.
             _publishSelection();

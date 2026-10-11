@@ -297,12 +297,17 @@ final class NativeShellViewController: UITabBarController,
     // Dart-driven selection is the only place that commits the UIKit tab.
     pendingUserSelectionIndex = nil
     NSLog("[NativeShell] Dart committed selected index=%d", index)
-    attachFlutter(to: controllers[index])
+    // Older UIKit needs Flutter installed before forwarding tab appearance.
+    if #unavailable(iOS 27.0) {
+      attachFlutter(to: controllers[index])
+    }
     if selectedIndex != index {
       isApplyingFlutterSelection = true
       defer { isApplyingFlutterSelection = false }
       selectedIndex = index
     }
+    // iOS 27 needs the visible slot or it can leave Flutter's surface paused.
+    attachFlutter(to: controllers[index])
   }
 
   func nativeShell(setSettingsBadge visible: Bool) {
