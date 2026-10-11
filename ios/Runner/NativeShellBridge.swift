@@ -67,7 +67,10 @@ final class NativeShellBridge {
 
   func userSelected(index: Int) {
     onUserSelected?(index)
-    channel.invokeMethod("selectTopLevel", arguments: ["index": index])
+    channel.invokeMethod("selectTopLevel", arguments: ["index": index]) { response in
+      NSLog("[NativeShell] Flutter selectTopLevel(%d) reply: %@", index,
+        String(describing: response))
+    }
   }
 
   func userRequested(action: String) {
