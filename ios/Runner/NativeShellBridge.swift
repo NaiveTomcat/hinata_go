@@ -12,6 +12,8 @@ protocol NativeShellBridgeDelegate: AnyObject {
 final class NativeShellBridge {
   weak var delegate: NativeShellBridgeDelegate?
   private let channel: FlutterMethodChannel
+  // RunnerTests observes the notification before the platform-channel send.
+  var onUserSelected: ((Int) -> Void)?
 
   init(messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(
@@ -64,6 +66,7 @@ final class NativeShellBridge {
   }
 
   func userSelected(index: Int) {
+    onUserSelected?(index)
     channel.invokeMethod("selectTopLevel", arguments: ["index": index])
   }
 

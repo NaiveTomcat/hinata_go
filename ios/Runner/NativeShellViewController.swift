@@ -10,6 +10,10 @@ final class NativeShellViewController: UITabBarController,
   private var actionButton: UIButton!
   private var actionButtonBottomToSafeArea: NSLayoutConstraint!
   private var isApplyingFlutterSelection = false
+  // A tap can dispatch legacy and modern UIKit callbacks. Track the tap so
+  // completion callbacks do not send the same Flutter navigation twice.
+  private var pendingUserSelectionIndex: Int?
+  private var pendingUserSelectionCompleted = false
 
   private var isTabBarVisible = true
   private var isDimmed = false
@@ -170,13 +174,65 @@ final class NativeShellViewController: UITabBarController,
     actionButtonBottomToSafeArea?.constant = -16 - overlap
   }
 
+  /// Notify Dart while Flutter is still attached to the visible tab. Doing
+  /// this only in didSelect is unreliable if UIKit detaches the Flutter view
+  /// before the platform message can be handled.
+  private func prepareUserSelection(to controller: UIViewController, index: Int) {
+    if !isApplyingFlutterSelection &&
+      (pendingUserSelectionIndex != index || pendingUserSelectionCompleted)
+    {
+      pendingUserSelectionIndex = index
+      pendingUserSelectionCompleted = false
+      bridge.userSelected(index: index)
+    }
+    // Keep the previous iPad fix: install Flutter before UIKit starts the
+    // destination tab's appearance transition.
+    attachFlutter(to: controller)
+  }
+
+  private func finishUserSelection(index: Int) {
+    guard !isApplyingFlutterSelection else { return }
+    // Both didSelect callbacks may fire for one tap, and a shouldSelect
+    // callback may already have sent the navigation message.
+    if pendingUserSelectionIndex == index {
+      pendingUserSelectionCompleted = true
+      return
+    }
+    pendingUserSelectionIndex = index
+    pendingUserSelectionCompleted = true
+    bridge.userSelected(index: index)
+  }
+
+  @available(iOS 18.0, *)
+  private func indexForTab(_ tab: UITab, in controller: UITabBarController) -> Int? {
+    // UITab.viewController is optional and can be unavailable before selection.
+    if let target = tab.viewController,
+      let index = controller.viewControllers?.firstIndex(where: { $0 === target })
+    {
+      return index
+    }
+    // With UIKit-managed tabs we can still resolve the tab by identity.
+    if let index = controller.tabs.firstIndex(where: { $0 === tab }),
+      controller.viewControllers?.indices.contains(index) == true
+    {
+      return index
+    }
+    // Some UIKit versions supply a tab without an instantiated controller.
+    // Our three shell titles are distinct, even if UIKit's tabs array is empty.
+    guard !tab.title.isEmpty else { return nil }
+    return controller.viewControllers?.firstIndex {
+      $0.tabBarItem.title == tab.title
+    }
+  }
+
   func tabBarController(
     _ tabBarController: UITabBarController,
     shouldSelect viewController: UIViewController
   ) -> Bool {
-    // Move Flutter before UIKit forwards appearance to the new tab. Moving it
-    // in didSelect can leave its rendering surface paused after the old tab hides.
-    attachFlutter(to: viewController)
+    guard let index = tabBarController.viewControllers?.firstIndex(
+      where: { $0 === viewController }
+    ) else { return true }
+    prepareUserSelection(to: viewController, index: index)
     return true
   }
 
@@ -185,9 +241,13 @@ final class NativeShellViewController: UITabBarController,
     _ tabBarController: UITabBarController,
     shouldSelectTab tab: UITab
   ) -> Bool {
-    // iOS 27 can use the UITab callback without invoking the legacy callback.
-    guard let viewController = tab.viewController else { return true }
-    return self.tabBarController(tabBarController, shouldSelect: viewController)
+    guard let index = indexForTab(tab, in: tabBarController),
+      let controller = tabBarController.viewControllers?[index] else {
+      NSLog("[NativeShell] Unable to resolve preselected UITab: %@", tab.identifier)
+      return true
+    }
+    prepareUserSelection(to: controller, index: index)
+    return true
   }
 
   @available(iOS 18.0, *)
@@ -196,11 +256,15 @@ final class NativeShellViewController: UITabBarController,
     didSelectTab selectedTab: UITab,
     previousTab: UITab?
   ) {
-    // UIKit can invoke this instead of didSelect UIViewController.
-    guard !isApplyingFlutterSelection else { return }
-    // Notify Flutter after selection, not from shouldSelectTab.
-    guard let controller = selectedTab.viewController
-      ?? tabBarController.selectedViewController else { return }
+    guard let index = indexForTab(selectedTab, in: tabBarController),
+      let controller = tabBarController.viewControllers?[index] else {
+      // Fall back to the actually selected view controller if UIKit doesn't
+      // expose the UITab's controller.
+      if let selected = tabBarController.selectedViewController {
+        self.tabBarController(tabBarController, didSelect: selected)
+      }
+      return
+    }
     self.tabBarController(tabBarController, didSelect: controller)
   }
 
@@ -208,11 +272,11 @@ final class NativeShellViewController: UITabBarController,
     _ tabBarController: UITabBarController,
     didSelect viewController: UIViewController
   ) {
-    guard let controllers = viewControllers,
-      let index = controllers.firstIndex(of: viewController)
-    else { return }
+    guard let index = tabBarController.viewControllers?.firstIndex(
+      where: { $0 === viewController }
+    ) else { return }
     attachFlutter(to: viewController)
-    bridge.userSelected(index: index)
+    finishUserSelection(index: index)
   }
 
   // MARK: - NativeShellBridgeDelegate
@@ -246,6 +310,11 @@ final class NativeShellViewController: UITabBarController,
 
   func nativeShell(setSelectedIndex index: Int) {
     guard let controllers = viewControllers, controllers.indices.contains(index) else { return }
+    // Dart-driven selection is not another native tap.
+    if pendingUserSelectionIndex != index {
+      pendingUserSelectionIndex = nil
+      pendingUserSelectionCompleted = false
+    }
     attachFlutter(to: controllers[index])
     if selectedIndex != index {
       isApplyingFlutterSelection = true

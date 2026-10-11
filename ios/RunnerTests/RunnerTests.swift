@@ -43,30 +43,61 @@ class RunnerTests: XCTestCase {
     let flutter = try XCTUnwrap(shell.selectedViewController?.children
       .compactMap { $0 as? FlutterViewController }.first)
     let delegate = try XCTUnwrap(shell.delegate)
-    defer { shell.nativeShell(setSelectedIndex: 0) }
+    let appDelegate = try XCTUnwrap(UIApplication.shared.delegate as? AppDelegate)
+    var forwardedSelections: [Int] = []
+    appDelegate.nativeShellBridge.onUserSelected = { forwardedSelections.append($0) }
+    defer {
+      appDelegate.nativeShellBridge.onUserSelected = nil
+      shell.nativeShell(setSelectedIndex: 0)
+    }
     var previousTab: UITab?
 
     for index in [1, 2, 0] {
       let target = try XCTUnwrap(shell.viewControllers?[index])
-      let tab = UITab(title: "Tab \(index)", image: nil, identifier: "test-\(index)") { _ in
-        target
+      // Prefer UIKit's actual tab rather than a synthetic tab when available.
+      let tab: UITab
+      if shell.tabs.indices.contains(index) {
+        tab = shell.tabs[index]
+      } else {
+        tab = UITab(title: target.tabBarItem.title ?? "Tab \(index)", image: nil, identifier: "test-\(index)") { _ in
+          target
+        }
       }
-      // iOS 27 can call this entry point without calling shouldSelect UIViewController.
       let allowed = try XCTUnwrap(delegate.tabBarController?(shell, shouldSelectTab: tab),
         "The UITab selection callback must prepare Flutter before UIKit switches tabs")
       XCTAssertTrue(allowed)
+      XCTAssertEqual(forwardedSelections.last, index,
+        "Preselection must notify Flutter even without a completion callback")
       XCTAssertTrue(flutter.parent === target)
+      let countAfterPreselection = forwardedSelections.count
       shell.selectedViewController = target
-      // Exercise the modern completion callback, not the legacy one.
+      // Real UIKit versions may call the modern, the legacy, or both callbacks.
       let notified = delegate.tabBarController?(
         shell, didSelectTab: tab, previousTab: previousTab)
       XCTAssertNotNil(notified, "The UITab completion callback must be implemented")
+      delegate.tabBarController?(shell, didSelect: target)
+      XCTAssertEqual(forwardedSelections.count, countAfterPreselection,
+        "Completion callbacks must not send duplicate route changes")
       previousTab = tab
       shell.view.layoutIfNeeded()
       let rendering = XCTNSPredicateExpectation(
         predicate: NSPredicate { _, _ in flutter.isDisplayingFlutterUI }, object: flutter)
       await fulfillment(of: [rendering], timeout: 10)
     }
+    // Simulate a preselection whose UITab has no view controller and is not
+    // present in the controller's tabs array.
+    let settings = try XCTUnwrap(shell.viewControllers?[2])
+    let title = try XCTUnwrap(settings.tabBarItem.title)
+    let missingControllerTab = UITab(title: title, image: nil, identifier: "test-nil-vc")
+    XCTAssertNil(missingControllerTab.viewController)
+    XCTAssertTrue(shell.tabBarController(shell, shouldSelectTab: missingControllerTab))
+    XCTAssertEqual(forwardedSelections.last, 2)
+    XCTAssertTrue(flutter.parent === settings)
+
+    let count = forwardedSelections.count
+    shell.nativeShell(setSelectedIndex: 1)
+    XCTAssertEqual(forwardedSelections.count, count,
+      "A Flutter-driven selection must not echo back as a user tap")
   }
 
   @MainActor
