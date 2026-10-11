@@ -36,27 +36,47 @@ class _NativeHostedScaffoldState extends ConsumerState<NativeHostedScaffold> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.navigationShell.currentIndex !=
         widget.navigationShell.currentIndex) {
-      _publishSelection();
+      // Finish Flutter's route frame before UIKit moves the shared view.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _publishSelection();
+      });
     }
   }
 
-  Future<void> _handleNativeCall(MethodCall call) async {
+  Future<Object?> _handleNativeCall(MethodCall call) async {
     switch (call.method) {
       case 'selectTopLevel':
         final arguments = Map<String, dynamic>.from(call.arguments as Map);
         final index = arguments['index'] as int;
         if (index >= 0 && index < 3) {
+          final previousIndex = widget.navigationShell.currentIndex;
+          debugPrint('[NativeShell] Dart received selectTopLevel=$index '
+              'current=$previousIndex');
           widget.navigationShell.goBranch(
             index,
-            initialLocation: index == widget.navigationShell.currentIndex,
+            initialLocation: index == previousIndex,
           );
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            final selected = widget.navigationShell.currentIndex;
+            debugPrint('[NativeShell] Dart after routing index=$selected '
+                'requested=$index');
+            // Synchronize UIKit even when a route changes without a
+            // NativeHostedScaffold widget identity change.
+            _publishSelection();
+          });
+          return {'accepted': true, 'index': index, 'previous': previousIndex};
         }
+        return {'accepted': false, 'index': index};
       case 'nativeAction':
         final arguments = Map<String, dynamic>.from(call.arguments as Map);
         final actionStr = arguments['action'] as String?;
         if (actionStr != null) {
           ref.read(appActionNotifierProvider.notifier).execute(actionStr);
         }
+        return null;
+      default:
+        return null;
     }
   }
 
@@ -93,10 +113,11 @@ class _NativeHostedScaffoldState extends ConsumerState<NativeHostedScaffold> {
     });
   }
 
-  Future<void> _publishSelection() => _channel.invokeMethod(
-    'setSelectedIndex',
-    {'index': widget.navigationShell.currentIndex},
-  );
+  Future<void> _publishSelection() {
+    final index = widget.navigationShell.currentIndex;
+    debugPrint('[NativeShell] Flutter -> UIKit setSelectedIndex=$index');
+    return _channel.invokeMethod('setSelectedIndex', {'index': index});
+  }
 
   Future<void> _publishSettingsBadge(bool visible) =>
       _channel.invokeMethod('setSettingsBadge', {'visible': visible});

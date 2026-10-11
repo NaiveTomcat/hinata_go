@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -100,4 +102,57 @@ void main() {
     expect(container.read(appActionNotifierProvider)?.id, 'cardsAction');
     expect((actionCalls.last['config'] as Map?)?['actionId'], 'cardsAction');
   });
+  testWidgets('native selectTopLevel message changes the real Flutter route', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          routerConfig: router,
+          locale: const Locale('en'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/scan');
+
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const codec = StandardMethodCodec();
+
+    Future<Object?> tapNativeTab(int index) async {
+      final response = Completer<ByteData?>();
+      messenger.handlePlatformMessage(
+        _nativeShellChannel.name,
+        codec.encodeMethodCall(
+          MethodCall('selectTopLevel', <String, Object?>{'index': index}),
+        ),
+        response.complete,
+      );
+      // GoRouter switches its branch after the incoming platform message.
+      await tester.pumpAndSettle();
+      final envelope = await response.future;
+      return codec.decodeEnvelope(envelope!);
+    }
+
+    final cardsResponse = await tapNativeTab(1);
+    expect((cardsResponse as Map)['accepted'], isTrue);
+    expect(router.routeInformationProvider.value.uri.path, '/cards');
+
+    final settingsResponse = await tapNativeTab(2);
+    expect((settingsResponse as Map)['accepted'], isTrue);
+    expect(router.routeInformationProvider.value.uri.path, '/settings');
+
+    await tapNativeTab(0);
+    expect(router.routeInformationProvider.value.uri.path, '/scan');
+  });
+
 }
