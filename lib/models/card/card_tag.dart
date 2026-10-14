@@ -36,6 +36,7 @@ class CardTag {
   static const bandaiNamco = CardTag('bandai_namco');
   static const konami = CardTag('konami');
   static const taito = CardTag('taito');
+  static const nesica = CardTag('nesica');
 
   // --- Dynamic Factories ---
 
@@ -87,6 +88,8 @@ class CardTag {
         return 'Konami Amusement';
       case 'taito':
         return 'TAITO';
+      case 'nesica':
+        return 'NESiCA';
       default:
         if (id.startsWith('issuer:')) {
           return id.substring(7);
@@ -185,6 +188,9 @@ class CardTag {
       case 'TAITO':
       case 'taito':
         return CardTag.taito;
+      case 'NESiCA':
+      case 'nesica':
+        return CardTag.nesica;
       default:
         return CardTag.issuer(str);
     }

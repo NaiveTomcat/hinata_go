@@ -11,6 +11,7 @@ import '../../../models/card/card.dart';
 import '../../../models/card/felica.dart';
 import '../../../models/card/iso15693.dart';
 import '../../../models/card/iso14443a.dart';
+import '../../../models/card/nesica.dart';
 import '../../../models/card/transit.dart';
 import '../../../models/card/tunion.dart';
 import '../../../services/notification_service.dart';
@@ -193,6 +194,12 @@ List<_CardDetailField> _buildCardDetailFields(ICCard card) {
         _CardDetailField(label: l10n.transitIssueDate, value: card.issueDate!),
       );
     }
+  }
+
+  if (card is Nesica) {
+    fields.add(
+      _CardDetailField(label: l10n.nesicaSerial, value: card.serialFormatted),
+    );
   }
 
   fields.addAll([
