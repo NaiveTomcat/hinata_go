@@ -15,7 +15,7 @@ extension NfcTagConverter on NFCTag {
   dynamic toInternalTag() {
     if (type == NFCTagType.iso18092) {
       final idm = _toUint8List(id);
-      Uint8List pmm = Uint8List(8);
+      Uint8List pmm = Uint8List(0);
       Uint16List systemCodes = Uint16List(0);
 
       if (manufacturer != null && manufacturer!.isNotEmpty) {
@@ -44,7 +44,9 @@ extension NfcTagConverter on NFCTag {
         type == NFCTagType.mifare_ultralight ||
         type == NFCTagType.iso7816) {
       final uid = _toUint8List(id);
-      int sakInt = (type == NFCTagType.iso7816) ? 0x20 : 0x08;
+      int sakInt = type == NFCTagType.mifare_ultralight
+          ? 0
+          : (type == NFCTagType.iso7816 ? 0x20 : 0x08);
       int atqaInt = 0x0400;
 
       if (sak != null && sak!.isNotEmpty) {
@@ -58,7 +60,13 @@ extension NfcTagConverter on NFCTag {
           atqaInt = (atqaBytes[1] << 8) | atqaBytes[0];
         }
       }
-      return Iso14443(uid, sakInt, atqaInt);
+      return Iso14443(
+        uid,
+        sakInt,
+        atqaInt,
+        sakKnown: sak != null && int.tryParse(sak!, radix: 16) != null,
+        atqaKnown: atqa != null && atqa!.length >= 4,
+      );
     }
 
     return null;

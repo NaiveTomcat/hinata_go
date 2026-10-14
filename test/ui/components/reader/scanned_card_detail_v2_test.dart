@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hinata_go/l10n/app_localizations.dart';
 import 'package:hinata_go/models/card/card.dart';
+import 'package:hinata_go/models/card/aime.dart';
+import 'package:hinata_go/models/card/banapass.dart';
 import 'package:hinata_go/models/card/felica.dart';
 import 'package:hinata_go/models/card/iso14443a.dart';
 import 'package:hinata_go/models/card/tunion.dart';
@@ -11,6 +13,46 @@ import 'package:hinata_go/ui/components/reader/scanned_card_detail_v2.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 void main() {
+  testWidgets(
+    'portable game data hides chip fields while scanned data keeps them',
+    (tester) async {
+      final tag = Iso14443(ICCard.hexToBytes('01020304'), 8, 4);
+      final code = ICCard.hexToBytes('01234567890123456789');
+      for (final physical in [null, tag]) {
+        for (final card in <CardData>[
+          Aime(code, physicalCard: physical),
+          Banapass.fromAccessCode(
+            accessCode: '30746056644448171490',
+            dualKey: true,
+            physicalCard: physical,
+          ),
+        ]) {
+          await tester.pumpWidget(
+            ProviderScope(
+              child: MaterialApp(
+                locale: const Locale('en'),
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: Scaffold(body: ScannedCardDetailV2(card: card)),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(find.text('Access Code'), findsOneWidget);
+          for (final label in ['UID', 'SAK', 'ATQA']) {
+            expect(
+              find.text(label),
+              physical == null ? findsNothing : findsOneWidget,
+            );
+          }
+          expect(find.text('0000 0000'), findsNothing);
+          if (physical != null) expect(find.text('0102 0304'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        }
+      }
+    },
+  );
+
   testWidgets('unusable cards keep their detected card type', (tester) async {
     await tester.pumpWidget(
       ProviderScope(

@@ -20,6 +20,82 @@ List<int> _response(Pn532Command command, List<int> payload) {
 }
 
 void main() {
+  for (final uid in [
+    [1, 2, 3, 4],
+    [4, 5, 6, 1, 2, 3, 4],
+  ]) {
+    test(
+      'Classic authentication sends four UID bytes for ${uid.length}-byte UID',
+      () async {
+        final writes = <List<int>>[];
+        final api = Pn532Api(
+          (data) async => writes.add(List<int>.from(data)),
+          ({timeout}) async => _response(Pn532Command.inDataExchange, [0]),
+        );
+
+        await HinataNfcCardChannel(api).authenticateMifare(
+          uid: Uint8List.fromList(uid),
+          block: 2,
+          keyA: Uint8List.fromList(List.filled(6, 0xff)),
+        );
+
+        expect(writes.single.sublist(7, 20), [
+          1,
+          0x60,
+          2,
+          ...List.filled(6, 0xff),
+          1,
+          2,
+          3,
+          4,
+        ]);
+      },
+    );
+  }
+
+  test(
+    'Classic authentication rejects an invalid UID before sending',
+    () async {
+      final writes = <List<int>>[];
+      final api = Pn532Api(
+        (data) async => writes.add(List<int>.from(data)),
+        ({timeout}) async => _response(Pn532Command.inDataExchange, [0]),
+      );
+
+      await expectLater(
+        api.mifareClassicAuth(1, [1, 2, 3], 2, 0x60, List.filled(6, 0xff)),
+        throwsArgumentError,
+      );
+      expect(writes, isEmpty);
+    },
+  );
+
+  test('HINATA exchange rejects a PN532 error status', () async {
+    final api = Pn532Api(
+      (_) async {},
+      ({timeout}) async => _response(Pn532Command.inDataExchange, [0x14]),
+    );
+
+    await expectLater(
+      HinataNfcCardChannel(api).transceive(Uint8List.fromList([0x30, 4])),
+      throwsA(isA<NfcException>()),
+    );
+  });
+
+  test('HINATA exchange accepts an empty successful write response', () async {
+    final api = Pn532Api(
+      (_) async {},
+      ({timeout}) async => _response(Pn532Command.inDataExchange, [0]),
+    );
+
+    expect(
+      await HinataNfcCardChannel(
+        api,
+      ).transceive(Uint8List.fromList([0xa2, 4, 0, 0, 0, 0])),
+      isEmpty,
+    );
+  });
+
   test('MIFARE authentication preserves transport timeout type', () async {
     final api = Pn532Api(
       (_) async {},

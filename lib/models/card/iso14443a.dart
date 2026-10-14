@@ -3,9 +3,21 @@ import 'card.dart';
 class Iso14443 extends ICCard {
   final int sak;
   final int atqa;
-  Iso14443(super.id, this.sak, this.atqa, {super.tags});
+  final bool sakKnown;
+  final bool atqaKnown;
+  Iso14443(
+    super.id,
+    this.sak,
+    this.atqa, {
+    super.tags,
+    this.sakKnown = true,
+    this.atqaKnown = true,
+  });
 
   bool get isMifareClassicCandidate => (sak & 0x08) != 0;
+
+  @override
+  String? get type => 'iso14443';
 
   @override
   String get name {
@@ -35,7 +47,13 @@ class Iso14443 extends ICCard {
 
   @override
   Map<String, dynamic> toJson() {
-    return {...super.toJson(), 'sak': sak, 'atqa': atqa};
+    return {
+      ...super.toJson(),
+      'sak': sak,
+      'atqa': atqa,
+      if (!sakKnown) 'sakKnown': false,
+      if (!atqaKnown) 'atqaKnown': false,
+    };
   }
 
   factory Iso14443.fromJson(Map<String, dynamic> json) {
@@ -43,6 +61,8 @@ class Iso14443 extends ICCard {
       ICCard.hexToBytes(json['id'] as String? ?? ''),
       json['sak'] as int? ?? 0x08,
       json['atqa'] as int? ?? 0x0004,
+      sakKnown: json['sakKnown'] as bool? ?? true,
+      atqaKnown: json['atqaKnown'] as bool? ?? true,
       tags:
           (json['tags'] as List<dynamic>?)?.map(CardTag.fromJson).toList() ??
           const [],

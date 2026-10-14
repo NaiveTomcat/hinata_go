@@ -6,11 +6,9 @@ import 'package:hinata_go/models/card/aime.dart';
 import 'package:hinata_go/models/card/banapass.dart';
 
 void main() {
-  final id = Uint8List.fromList([1, 2, 3, 4]);
-
   test('builds Aime writable and permanent payloads', () {
     final accessCode = Uint8List.fromList(List.generate(10, (index) => index));
-    final card = Aime(id, 0x08, 0x0004, accessCode);
+    final card = Aime(accessCode);
 
     final writable = MifareCardWritePayload.fromCard(
       card,
@@ -30,7 +28,7 @@ void main() {
 
   test('builds key A Banapass without writing block 2', () {
     final block1 = Uint8List.fromList(List.generate(16, (index) => index));
-    final card = Banapass(id, 0x08, 0x0004, block1, null);
+    final card = Banapass(block1, null);
 
     final writable = MifareCardWritePayload.fromCard(
       card,
@@ -50,7 +48,7 @@ void main() {
   test('builds dual-key Banapass with both data blocks', () {
     final block1 = Uint8List.fromList(List.generate(16, (index) => index));
     final block2 = Uint8List.fromList(List.generate(16, (index) => 16 + index));
-    final card = Banapass(id, 0x08, 0x0004, block1, block2);
+    final card = Banapass(block1, block2);
 
     final writable = MifareCardWritePayload.fromCard(
       card,

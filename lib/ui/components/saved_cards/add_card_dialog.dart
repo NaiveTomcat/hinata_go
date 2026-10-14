@@ -1,3 +1,4 @@
+import 'package:cardcipher/bana.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -39,7 +40,8 @@ class AddCardDialog extends HookConsumerWidget {
 
     final isBanapass = AccessCodeValidator.startsWithBanapassPrefix(value);
     final isCodeValid = isBanapass
-        ? AccessCodeValidator.isValidBanapassAccessCode(value)
+        ? BanapassCipher.isAvailable() &&
+              AccessCodeValidator.isValidBanapassAccessCode(value)
         : AccessCodeValidator.isValidAimeAccessCode(value);
     final isFormValid = name.isNotEmpty && isCodeValid;
 
@@ -49,20 +51,11 @@ class AddCardDialog extends HookConsumerWidget {
       final accessCodeBytes = ICCard.hexToBytes(value);
       final card = isBanapass
           ? Banapass.fromAccessCode(
-              Uint8List(0),
-              0x08,
-              0x0400,
               accessCode: value,
               dualKey: true,
-              tags: const [CardTag.banapass, CardTag.mifareClassic],
+              tags: const [CardTag.banapass],
             )
-          : Aime(
-              Uint8List(4),
-              0x08,
-              0x0004,
-              accessCodeBytes,
-              tags: const [CardTag.aime, CardTag.mifareClassic],
-            );
+          : Aime(accessCodeBytes, tags: const [CardTag.aime]);
       final notifier = ref.read(savedCardsProvider.notifier);
       final folderId = selectedFolderIdState.value;
 
@@ -115,7 +108,7 @@ class AddCardDialog extends HookConsumerWidget {
         .toList();
 
     return AlertDialog(
-      title: Text(l10n.addCardManually),
+      title: Text(l10n.addAimeBanapass),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -159,7 +152,9 @@ class AddCardDialog extends HookConsumerWidget {
               decoration: InputDecoration(
                 labelText: l10n.accessCode,
                 helperText: value.isNotEmpty && !isCodeValid
-                    ? l10n.invalidAccessCodeLength
+                    ? (isBanapass
+                          ? l10n.banapassAccessCodeCannotCreate
+                          : l10n.invalidAccessCodeLength)
                     : null,
                 helperMaxLines: 3,
                 helperStyle: const TextStyle(color: Colors.orange),

@@ -3,9 +3,9 @@ import 'dart:typed_data';
 import 'card.dart';
 import 'iso14443a.dart';
 
-class Aime extends Iso14443 implements HasAccessCode {
+class Aime extends CardData implements HasAccessCode {
   final Uint8List accessCode;
-  Aime(super.id, super.sak, super.atqa, this.accessCode, {super.tags});
+  Aime(this.accessCode, {super.physicalCard, super.tags});
 
   @override
   String get accessCodeString =>
@@ -30,19 +30,22 @@ class Aime extends Iso14443 implements HasAccessCode {
     return {...super.toJson(), 'accessCode': accessCodeString};
   }
 
-  factory Aime.fromJson(Map<String, dynamic> json) {
-    final iso = Iso14443.fromJson(json);
+  factory Aime.fromJson(Map<String, dynamic> json, {String? source}) {
+    final physical = CardData.readPhysicalCard(json, source: source);
     return Aime(
-      iso.id,
-      iso.sak,
-      iso.atqa,
       ICCard.hexToBytes(json['accessCode'] as String? ?? ''),
-      tags: iso.tags,
+      physicalCard: physical,
+      tags:
+          (json['tags'] as List<dynamic>?)
+              ?.map(CardTag.fromJson)
+              .where((tag) => physical != null || tag != CardTag.mifareClassic)
+              .toList() ??
+          const [],
     );
   }
 }
 
 extension ToAime on Iso14443 {
   Aime toAime(Uint8List accessCode, {List<CardTag>? tags}) =>
-      Aime(id, sak, atqa, accessCode, tags: tags ?? this.tags);
+      Aime(accessCode, physicalCard: this, tags: tags ?? this.tags);
 }

@@ -66,7 +66,7 @@ class ApiService {
   }
 
   ApiServiceResult? _validateCard(ICCard card) {
-    if (card.type != null && card.type!.isNotEmpty) {
+    if (card.type != null && card.type!.isNotEmpty && card.type != 'ndef') {
       return null;
     }
 
@@ -182,7 +182,7 @@ class ApiService {
         ? card.toRemoteJson(
             includeCanonicalFields: capabilities.supportsCanonicalBanapass,
           )
-        : card.toJson();
+        : card.toRemoteJson();
     return <String, dynamic>{
       'action': 'SET_CARD_V2',
       'body': {'card': cardPayload},

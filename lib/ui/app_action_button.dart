@@ -75,21 +75,26 @@ class _FlutterMenuAction extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        for (int i = 1; i < items.length; i++) ...[
-          FloatingActionButton.small(
-            heroTag: items[i].id,
-            onPressed: items[i].onPressed,
-            tooltip: items[i].label,
-            child: Icon(items[i].icon ?? Icons.add),
+        for (final item in items.reversed) ...[
+          if (item != items.last) const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: item.id,
+            onPressed: item.onPressed,
+            tooltip: item.label,
+            icon: Icon(item.icon ?? config.icon),
+            extendedTextStyle: Theme.of(context).textTheme.labelLarge,
+            label: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width - 112,
+              ),
+              child: Text(
+                item.label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ),
-          const SizedBox(height: 12),
         ],
-        FloatingActionButton(
-          heroTag: items.first.id,
-          onPressed: items.first.onPressed,
-          tooltip: items.first.label,
-          child: Icon(items.first.icon ?? config.icon),
-        ),
       ],
     );
   }

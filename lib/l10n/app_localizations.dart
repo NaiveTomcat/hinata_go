@@ -1589,7 +1589,7 @@ abstract class AppLocalizations {
   /// No description provided for @cardWriteWaitingForCard.
   ///
   /// In en, this message translates to:
-  /// **'Hold a MIFARE Classic 1K card near the phone or reader'**
+  /// **'Hold the target tag near your phone or reader'**
   String get cardWriteWaitingForCard;
 
   /// No description provided for @cardWriteCheckingCard.
@@ -1693,6 +1693,312 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Card writing was cancelled before any data was changed'**
   String get cardWriteCancelled;
+
+  /// No description provided for @ndefCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'New NDEF dataset'**
+  String get ndefCreate;
+
+  /// No description provided for @ndefEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit NDEF dataset'**
+  String get ndefEdit;
+
+  /// No description provided for @addAimeBanapass.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Aime/Banapass'**
+  String get addAimeBanapass;
+
+  /// No description provided for @ndefAddRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Add record'**
+  String get ndefAddRecord;
+
+  /// No description provided for @ndefRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'NDEF record'**
+  String get ndefRecord;
+
+  /// No description provided for @ndefText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get ndefText;
+
+  /// No description provided for @ndefExternal.
+  ///
+  /// In en, this message translates to:
+  /// **'External type'**
+  String get ndefExternal;
+
+  /// No description provided for @ndefRaw.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw record (hex)'**
+  String get ndefRaw;
+
+  /// No description provided for @ndefTypeHex.
+  ///
+  /// In en, this message translates to:
+  /// **'Type (hex)'**
+  String get ndefTypeHex;
+
+  /// No description provided for @ndefPayloadHex.
+  ///
+  /// In en, this message translates to:
+  /// **'Payload (hex)'**
+  String get ndefPayloadHex;
+
+  /// No description provided for @ndefIdHex.
+  ///
+  /// In en, this message translates to:
+  /// **'Record ID (hex, optional)'**
+  String get ndefIdHex;
+
+  /// No description provided for @ndefLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language code'**
+  String get ndefLanguage;
+
+  /// No description provided for @ndefContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Content'**
+  String get ndefContent;
+
+  /// No description provided for @ndefEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a name and add at least one record'**
+  String get ndefEmpty;
+
+  /// No description provided for @ndefInvalidRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid record. Check the type, content and hex fields'**
+  String get ndefInvalidRecord;
+
+  /// No description provided for @ndefCapacityExceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'NDEF data exceeds the target tag capacity'**
+  String get ndefCapacityExceeded;
+
+  /// No description provided for @ndefWriteWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This overwrites the target NDEF data. An unformatted MIFARE Classic will be formatted and its existing data erased. Capacity, keys and write permissions are checked before writing. Keep the tag in place until completion. iPhone MIFARE Classic support depends on the system; formatting is unavailable.'**
+  String get ndefWriteWarning;
+
+  /// No description provided for @ndefUnsupportedTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Incompatible target. Use a writable NDEF tag. Formatting MIFARE Classic requires a compatible Android phone or HINATA reader.'**
+  String get ndefUnsupportedTarget;
+
+  /// No description provided for @ndefNoBackend.
+  ///
+  /// In en, this message translates to:
+  /// **'NDEF writing requires an NFC phone or connected HINATA reader'**
+  String get ndefNoBackend;
+
+  /// No description provided for @ndefName.
+  ///
+  /// In en, this message translates to:
+  /// **'Dataset name'**
+  String get ndefName;
+
+  /// No description provided for @ndefFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to'**
+  String get ndefFolder;
+
+  /// No description provided for @ndefLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get ndefLink;
+
+  /// No description provided for @ndefLinkHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Supports https://, tel:, mailto: and geo:'**
+  String get ndefLinkHint;
+
+  /// No description provided for @ndefAdvanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced options'**
+  String get ndefAdvanced;
+
+  /// No description provided for @ndefRecordKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Content type'**
+  String get ndefRecordKind;
+
+  /// No description provided for @ndefRecordAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add record'**
+  String get ndefRecordAdd;
+
+  /// No description provided for @ndefRecordEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit record'**
+  String get ndefRecordEdit;
+
+  /// No description provided for @ndefMimeType.
+  ///
+  /// In en, this message translates to:
+  /// **'Media type (MIME)'**
+  String get ndefMimeType;
+
+  /// No description provided for @ndefExternalTypeName.
+  ///
+  /// In en, this message translates to:
+  /// **'External type name'**
+  String get ndefExternalTypeName;
+
+  /// No description provided for @ndefTnf.
+  ///
+  /// In en, this message translates to:
+  /// **'Type name format (TNF)'**
+  String get ndefTnf;
+
+  /// No description provided for @ndefTnfEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty record'**
+  String get ndefTnfEmpty;
+
+  /// No description provided for @ndefTnfWellKnown.
+  ///
+  /// In en, this message translates to:
+  /// **'NFC well-known type'**
+  String get ndefTnfWellKnown;
+
+  /// No description provided for @ndefTnfUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown type'**
+  String get ndefTnfUnknown;
+
+  /// No description provided for @ndefTnfUnchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Continuation chunk'**
+  String get ndefTnfUnchanged;
+
+  /// No description provided for @ndefDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Dataset details'**
+  String get ndefDetails;
+
+  /// No description provided for @ndefSaveCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a copy'**
+  String get ndefSaveCopy;
+
+  /// No description provided for @ndefWriteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Write NDEF tag'**
+  String get ndefWriteTitle;
+
+  /// No description provided for @ndefWriteOverwrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Existing NDEF content on the target tag will be replaced.'**
+  String get ndefWriteOverwrite;
+
+  /// No description provided for @ndefWriteClassicWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Android or a HINATA reader may format MIFARE Classic, erasing its existing data.'**
+  String get ndefWriteClassicWarning;
+
+  /// No description provided for @ndefWriteKeepTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the tag in place until writing and verification finish.'**
+  String get ndefWriteKeepTag;
+
+  /// No description provided for @ndefWriteIosLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'iPhone cannot format MIFARE Classic. Formatted cards also require system support.'**
+  String get ndefWriteIosLimit;
+
+  /// No description provided for @ndefWriteSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'NDEF content written and verified'**
+  String get ndefWriteSuccess;
+
+  /// No description provided for @ndefWriteChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the tag'**
+  String get ndefWriteChecking;
+
+  /// No description provided for @ndefWriteData.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing NDEF content'**
+  String get ndefWriteData;
+
+  /// No description provided for @ndefWriteVerifying.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading back to verify'**
+  String get ndefWriteVerifying;
+
+  /// No description provided for @ndefRecordCount.
+  ///
+  /// In en, this message translates to:
+  /// **'NDEF record count'**
+  String get ndefRecordCount;
+
+  /// No description provided for @ndefDataSize.
+  ///
+  /// In en, this message translates to:
+  /// **'NDEF dataset size'**
+  String get ndefDataSize;
+
+  /// No description provided for @ndefTagCapacity.
+  ///
+  /// In en, this message translates to:
+  /// **'NDEF capacity'**
+  String get ndefTagCapacity;
+
+  /// No description provided for @ndefRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'NDEF dataset'**
+  String get ndefRecords;
+
+  /// No description provided for @ndefBytes.
+  ///
+  /// In en, this message translates to:
+  /// **'{bytes} bytes'**
+  String ndefBytes(int bytes);
+
+  /// No description provided for @banapassAccessCodeCannotCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'This Banapass access code cannot be used to create a card.'**
+  String get banapassAccessCodeCannotCreate;
 }
 
 class _AppLocalizationsDelegate

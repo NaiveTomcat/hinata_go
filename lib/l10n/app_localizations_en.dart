@@ -827,7 +827,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cardWriteWaitingForCard =>
-      'Hold a MIFARE Classic 1K card near the phone or reader';
+      'Hold the target tag near your phone or reader';
 
   @override
   String get cardWriteCheckingCard => 'Checking card type';
@@ -888,4 +888,169 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get cardWriteCancelled =>
       'Card writing was cancelled before any data was changed';
+
+  @override
+  String get ndefCreate => 'New NDEF dataset';
+
+  @override
+  String get ndefEdit => 'Edit NDEF dataset';
+
+  @override
+  String get addAimeBanapass => 'Add Aime/Banapass';
+
+  @override
+  String get ndefAddRecord => 'Add record';
+
+  @override
+  String get ndefRecord => 'NDEF record';
+
+  @override
+  String get ndefText => 'Text';
+
+  @override
+  String get ndefExternal => 'External type';
+
+  @override
+  String get ndefRaw => 'Raw record (hex)';
+
+  @override
+  String get ndefTypeHex => 'Type (hex)';
+
+  @override
+  String get ndefPayloadHex => 'Payload (hex)';
+
+  @override
+  String get ndefIdHex => 'Record ID (hex, optional)';
+
+  @override
+  String get ndefLanguage => 'Language code';
+
+  @override
+  String get ndefContent => 'Content';
+
+  @override
+  String get ndefEmpty => 'Enter a name and add at least one record';
+
+  @override
+  String get ndefInvalidRecord =>
+      'Invalid record. Check the type, content and hex fields';
+
+  @override
+  String get ndefCapacityExceeded =>
+      'NDEF data exceeds the target tag capacity';
+
+  @override
+  String get ndefWriteWarning =>
+      'This overwrites the target NDEF data. An unformatted MIFARE Classic will be formatted and its existing data erased. Capacity, keys and write permissions are checked before writing. Keep the tag in place until completion. iPhone MIFARE Classic support depends on the system; formatting is unavailable.';
+
+  @override
+  String get ndefUnsupportedTarget =>
+      'Incompatible target. Use a writable NDEF tag. Formatting MIFARE Classic requires a compatible Android phone or HINATA reader.';
+
+  @override
+  String get ndefNoBackend =>
+      'NDEF writing requires an NFC phone or connected HINATA reader';
+
+  @override
+  String get ndefName => 'Dataset name';
+
+  @override
+  String get ndefFolder => 'Save to';
+
+  @override
+  String get ndefLink => 'Link';
+
+  @override
+  String get ndefLinkHint => 'Supports https://, tel:, mailto: and geo:';
+
+  @override
+  String get ndefAdvanced => 'Advanced options';
+
+  @override
+  String get ndefRecordKind => 'Content type';
+
+  @override
+  String get ndefRecordAdd => 'Add record';
+
+  @override
+  String get ndefRecordEdit => 'Edit record';
+
+  @override
+  String get ndefMimeType => 'Media type (MIME)';
+
+  @override
+  String get ndefExternalTypeName => 'External type name';
+
+  @override
+  String get ndefTnf => 'Type name format (TNF)';
+
+  @override
+  String get ndefTnfEmpty => 'Empty record';
+
+  @override
+  String get ndefTnfWellKnown => 'NFC well-known type';
+
+  @override
+  String get ndefTnfUnknown => 'Unknown type';
+
+  @override
+  String get ndefTnfUnchanged => 'Continuation chunk';
+
+  @override
+  String get ndefDetails => 'Dataset details';
+
+  @override
+  String get ndefSaveCopy => 'Save a copy';
+
+  @override
+  String get ndefWriteTitle => 'Write NDEF tag';
+
+  @override
+  String get ndefWriteOverwrite =>
+      'Existing NDEF content on the target tag will be replaced.';
+
+  @override
+  String get ndefWriteClassicWarning =>
+      'Android or a HINATA reader may format MIFARE Classic, erasing its existing data.';
+
+  @override
+  String get ndefWriteKeepTag =>
+      'Keep the tag in place until writing and verification finish.';
+
+  @override
+  String get ndefWriteIosLimit =>
+      'iPhone cannot format MIFARE Classic. Formatted cards also require system support.';
+
+  @override
+  String get ndefWriteSuccess => 'NDEF content written and verified';
+
+  @override
+  String get ndefWriteChecking => 'Checking the tag';
+
+  @override
+  String get ndefWriteData => 'Writing NDEF content';
+
+  @override
+  String get ndefWriteVerifying => 'Reading back to verify';
+
+  @override
+  String get ndefRecordCount => 'NDEF record count';
+
+  @override
+  String get ndefDataSize => 'NDEF dataset size';
+
+  @override
+  String get ndefTagCapacity => 'NDEF capacity';
+
+  @override
+  String get ndefRecords => 'NDEF dataset';
+
+  @override
+  String ndefBytes(int bytes) {
+    return '$bytes bytes';
+  }
+
+  @override
+  String get banapassAccessCodeCannotCreate =>
+      'This Banapass access code cannot be used to create a card.';
 }

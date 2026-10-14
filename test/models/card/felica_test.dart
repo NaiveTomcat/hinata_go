@@ -26,8 +26,8 @@ void main() {
       expect(card.fakeAccessCodeString, '00085087425607784056');
       expect(card.fakeAccessCode, card.fakeAccessCodeString);
       expect(card.fakeAccessCode.length, 20);
-      // In public builds cardcipher throws UnsupportedError and epass is null
-      expect(card.epass, isNull);
+      // Public builds have no cipher; private builds must match the vector.
+      expect(card.epass, anyOf(isNull, 'U3W612SERSTTAB2F'));
     });
 
     test(
@@ -72,8 +72,7 @@ void main() {
         0x78,
       ]);
       final card = Iso15693(uid);
-      // In public builds cardcipher throws UnsupportedError and epass is null
-      expect(card.epass, isNull);
+      expect(card.epass, anyOf(isNull, 'ZMYA3Z3FKF45SR1B'));
 
       final json = card.toJson();
       expect(json.containsKey('epass'), isFalse);

@@ -393,9 +393,13 @@ class Pn532Api extends IoBase {
     int keyNum,
     List<int> key,
   ) async {
+    if (uid.length != 4 && uid.length != 7) {
+      throw ArgumentError.value(uid.length, 'uid.length', 'Must be 4 or 7');
+    }
     var input = [blockNum];
     input.addAll(key.sublist(0, 6));
-    input.addAll(uid);
+    // Classic authentication uses the last cascade level (AN10927, table 4).
+    input.addAll(uid.sublist(uid.length - 4));
     final res = await inDataExchange(tg, keyNum, input);
     return Pn532Error.fromValue(res[0]);
   }

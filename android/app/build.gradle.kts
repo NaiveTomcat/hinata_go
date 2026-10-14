@@ -59,6 +59,8 @@ android {
     buildTypes {
         getByName("debug") {
             signingConfig = signingConfigs.getByName("default")
+                .takeIf { it.storeFile != null }
+                ?: signingConfigs.getByName("debug")
         }
         getByName("release") {
             signingConfig = signingConfigs.getByName("default")

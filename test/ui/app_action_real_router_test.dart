@@ -89,6 +89,13 @@ void main() {
     router.go('/cards');
     await tester.pumpAndSettle();
     expect(container.read(appActionNotifierProvider)?.id, 'cardsAction');
+    expect(
+      container
+          .read(appActionNotifierProvider)
+          ?.menuItems
+          ?.map((item) => item.id),
+      ['addCard', 'addNdef', 'addFolder'],
+    );
 
     // `/instances` is a root-level route, so it replaces the shell and its own button takes over.
     router.push('/instances');
@@ -154,4 +161,39 @@ void main() {
     await tapNativeTab(0);
     expect(router.routeInformationProvider.value.uri.path, '/scan');
   });
+  testWidgets(
+    'NDEF mobile editor covers native tab bar until the whole editor closes',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            routerConfig: router,
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      router.go('/cards');
+      await tester.pumpAndSettle();
+      container.read(appActionNotifierProvider.notifier).execute('addNdef');
+      await tester.pumpAndSettle();
+      expect(container.read(nativeShellCoverageProvider).shellCovered, isTrue);
+      await tester.tap(find.text('Add record'));
+      await tester.pumpAndSettle();
+      expect(container.read(nativeShellCoverageProvider).shellCovered, isTrue);
+      await tester.tap(find.byTooltip('Cancel').last);
+      await tester.pumpAndSettle();
+      expect(container.read(nativeShellCoverageProvider).shellCovered, isTrue);
+      await tester.tap(find.byTooltip('Cancel').last);
+      await tester.pumpAndSettle();
+      expect(container.read(nativeShellCoverageProvider).shellCovered, isFalse);
+    },
+  );
 }

@@ -17,6 +17,7 @@ import '../ui_text.dart';
 import '../components/saved_cards/card_item.dart';
 import '../components/saved_cards/folder_selection_strip.dart';
 import '../components/saved_cards/add_card_dialog.dart';
+import '../components/saved_cards/ndef_editor_dialog.dart';
 import '../components/saved_cards/add_folder_dialog.dart';
 import '../components/instances/select_instance_dialog.dart';
 import '../app_action_button.dart';
@@ -192,12 +193,21 @@ class SavedCardsPage extends HookConsumerWidget {
           menuItems: [
             AppActionItem(
               id: 'addCard',
-              label: l10n.addCard,
+              label: l10n.addAimeBanapass,
               icon: Icons.add,
               onPressed: () => _showAddCardDialog(
                 context,
                 selectedFolderIdState.value,
                 (newId) => selectedFolderIdState.value = newId,
+              ),
+            ),
+            AppActionItem(
+              id: 'addNdef',
+              label: l10n.ndefCreate,
+              icon: Icons.nfc,
+              onPressed: () => showNdefEditor(
+                context,
+                initialFolderId: selectedFolderIdState.value,
               ),
             ),
             AppActionItem(

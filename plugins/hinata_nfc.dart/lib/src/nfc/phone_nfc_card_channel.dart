@@ -34,12 +34,12 @@ class PhoneNfcCardChannel implements NfcCardChannel {
       late final bool authenticated;
       if (keyA != null) {
         authenticated = await FlutterNfcKit.authenticateSector(
-          block ~/ 4,
+          block < 128 ? block ~/ 4 : 32 + (block - 128) ~/ 16,
           keyA: keyA,
         );
       } else if (keyB != null) {
         authenticated = await FlutterNfcKit.authenticateSector(
-          block ~/ 4,
+          block < 128 ? block ~/ 4 : 32 + (block - 128) ~/ 16,
           keyB: keyB,
         );
       } else {

@@ -7,10 +7,10 @@ import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 import 'package:uuid/uuid.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../models/card/ndef.dart';
 
 import '../l10n/l10n.dart';
-import '../models/card/aime.dart';
-import '../models/card/banapass.dart';
 import '../models/card/card_read_result.dart';
 import '../models/card/iso14443a.dart';
 import '../models/card/scanned_card.dart';
@@ -389,10 +389,7 @@ class NfcNotifier extends Notifier<NfcState> with WidgetsBindingObserver {
 
     if (result.status == CardReadStatus.confirmedUnsupported) {
       final card = result.card?.card;
-      return card is Iso14443 &&
-          card is! TUnion &&
-          card is! Aime &&
-          card is! Banapass;
+      return card is Iso14443 && card is! TUnion;
     }
 
     if (result.status == CardReadStatus.incomplete) {
@@ -453,6 +450,32 @@ class NfcNotifier extends Notifier<NfcState> with WidgetsBindingObserver {
       return result;
     }
 
+    final card = scannedCard.card;
+    final prismUrl = card is NdefCard ? card.prismUrl : null;
+    if (prismUrl != null && !kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
+      final url = prismUrl;
+      try {
+        if (scannedCard.source == 'NFC') await FlutterNfcKit.finish();
+        if (Platform.isIOS) {
+          await const MethodChannel(
+            'dev.hinata.go/native_shell',
+          ).invokeMethod<void>('openPrismURL', {'url': url.toString()});
+        } else if (!await launchUrl(
+          url,
+          mode: LaunchMode.externalApplication,
+        )) {
+          throw StateError('Could not open Prism URL');
+        }
+      } catch (error, stackTrace) {
+        log(
+          'Failed to open NDEF Prism URL',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        ref.read(notificationServiceProvider).showError(error.toString());
+      }
+      return result;
+    }
     await _processScannedCard(scannedCard);
     return result;
   }
@@ -493,7 +516,7 @@ class NfcNotifier extends Notifier<NfcState> with WidgetsBindingObserver {
     ref.read(savedCardsProvider.notifier).addCard(savedCard);
 
     // 3. Handle according to Scanning Mode
-    if (scanningMode == ScanningMode.sender) {
+    if (scanningMode == ScanningMode.sender && card is! NdefCard) {
       // Sender Mode: Auto-send to active instance
       await ref.read(cardSenderProvider.notifier).sendCard(card);
     }

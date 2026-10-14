@@ -16,9 +16,6 @@ void main() {
     () async {
       final channel = _MemoryMifareChannel.transportConfiguration();
       final card = Aime(
-        tag.id,
-        tag.sak,
-        tag.atqa,
         Uint8List.fromList(List.generate(10, (index) => index + 1)),
       );
       final payload = MifareCardWritePayload.fromCard(
@@ -40,9 +37,6 @@ void main() {
     () async {
       final channel = _MemoryMifareChannel.transportConfiguration();
       final card = Banapass(
-        tag.id,
-        tag.sak,
-        tag.atqa,
         Uint8List.fromList(List.generate(16, (index) => index)),
         Uint8List.fromList(List.generate(16, (index) => index + 16)),
       );
@@ -76,12 +70,7 @@ void main() {
         keyB: const [1, 1, 1, 1, 1, 1],
         access: access,
       );
-      final card = Aime(
-        tag.id,
-        tag.sak,
-        tag.atqa,
-        Uint8List.fromList(List.filled(10, 7)),
-      );
+      final card = Aime(Uint8List.fromList(List.filled(10, 7)));
 
       await expectLater(
         MifareCardWriter(channel: channel, tag: tag).write(
@@ -101,12 +90,7 @@ void main() {
 
   test('honors cancellation after preflight and before writing', () async {
     final channel = _MemoryMifareChannel.transportConfiguration();
-    final card = Aime(
-      tag.id,
-      tag.sak,
-      tag.atqa,
-      Uint8List.fromList(List.filled(10, 7)),
-    );
+    final card = Aime(Uint8List.fromList(List.filled(10, 7)));
     var cancelled = false;
 
     await expectLater(
@@ -133,12 +117,7 @@ void main() {
     () async {
       final channel = _MemoryMifareChannel.transportConfiguration();
       final wrongTag = Iso14443(Uint8List.fromList([1, 2, 3, 4]), 0x18, 0x0002);
-      final card = Aime(
-        tag.id,
-        tag.sak,
-        tag.atqa,
-        Uint8List.fromList(List.filled(10, 7)),
-      );
+      final card = Aime(Uint8List.fromList(List.filled(10, 7)));
 
       await expectLater(
         MifareCardWriter(channel: channel, tag: wrongTag).write(

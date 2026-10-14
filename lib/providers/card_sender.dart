@@ -36,7 +36,7 @@ class CardSender extends Notifier<CardSenderState> {
     RemoteInstance? targetInstance,
     String? triggerId,
   }) async {
-    if (state.isSending) return false;
+    if (state.isSending || card.type == 'ndef') return false;
 
     final activeInstance = targetInstance ?? ref.read(activeInstanceProvider);
     final notificationService = ref.read(notificationServiceProvider);

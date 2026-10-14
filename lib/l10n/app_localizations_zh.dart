@@ -808,7 +808,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cardWriteConfirmPermanent => '锁定并写入';
 
   @override
-  String get cardWriteWaitingForCard => '请将 MIFARE Classic 1K 卡片贴近手机或读卡器';
+  String get cardWriteWaitingForCard => '请将目标标签贴近手机或读卡器';
 
   @override
   String get cardWriteCheckingCard => '正在检查卡片类型';
@@ -861,4 +861,162 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cardWriteCancelled => '已在修改数据前取消卡片写入';
+
+  @override
+  String get ndefCreate => '新建 NDEF 数据集';
+
+  @override
+  String get ndefEdit => '编辑 NDEF 数据集';
+
+  @override
+  String get addAimeBanapass => '添加 Aime/Banapass';
+
+  @override
+  String get ndefAddRecord => '添加内容';
+
+  @override
+  String get ndefRecord => 'NDEF 内容';
+
+  @override
+  String get ndefText => '文本';
+
+  @override
+  String get ndefExternal => '外部类型';
+
+  @override
+  String get ndefRaw => '原始记录（十六进制）';
+
+  @override
+  String get ndefTypeHex => '类型（十六进制）';
+
+  @override
+  String get ndefPayloadHex => '内容（十六进制）';
+
+  @override
+  String get ndefIdHex => '记录 ID（十六进制，可选）';
+
+  @override
+  String get ndefLanguage => '语言代码';
+
+  @override
+  String get ndefContent => '内容';
+
+  @override
+  String get ndefEmpty => '请输入名称并添加至少一条内容';
+
+  @override
+  String get ndefInvalidRecord => '内容格式无效，请检查类型、内容及十六进制字段';
+
+  @override
+  String get ndefCapacityExceeded => 'NDEF 数据超过目标标签的可用容量';
+
+  @override
+  String get ndefWriteWarning =>
+      '将覆盖目标标签中的 NDEF 内容。未格式化的 MIFARE Classic 会被格式化，其原有数据将被清除。写入前会检查容量、密钥和写入权限，请保持标签不动直到完成。iPhone 的 MIFARE Classic 支持取决于系统，不支持格式化。';
+
+  @override
+  String get ndefUnsupportedTarget =>
+      '目标标签不兼容。请使用可写入的 NDEF 标签；格式化 MIFARE Classic 需要支持该卡的安卓手机或 HINATA 读卡器。';
+
+  @override
+  String get ndefNoBackend => 'NDEF 写入需要支持 NFC 的手机或已连接的 HINATA 读卡器';
+
+  @override
+  String get ndefName => '数据集名称';
+
+  @override
+  String get ndefFolder => '保存到';
+
+  @override
+  String get ndefLink => '链接';
+
+  @override
+  String get ndefLinkHint => '支持 https://、tel:、mailto: 和 geo:';
+
+  @override
+  String get ndefAdvanced => '高级选项';
+
+  @override
+  String get ndefRecordKind => '内容类型';
+
+  @override
+  String get ndefRecordAdd => '添加内容';
+
+  @override
+  String get ndefRecordEdit => '编辑内容';
+
+  @override
+  String get ndefMimeType => '媒体类型（MIME）';
+
+  @override
+  String get ndefExternalTypeName => '外部类型名称';
+
+  @override
+  String get ndefTnf => '类型名称格式（TNF）';
+
+  @override
+  String get ndefTnfEmpty => '空记录';
+
+  @override
+  String get ndefTnfWellKnown => 'NFC 标准类型';
+
+  @override
+  String get ndefTnfUnknown => '未知类型';
+
+  @override
+  String get ndefTnfUnchanged => '续接分块';
+
+  @override
+  String get ndefDetails => '数据集详情';
+
+  @override
+  String get ndefSaveCopy => '保存副本';
+
+  @override
+  String get ndefWriteTitle => '写入 NDEF 标签';
+
+  @override
+  String get ndefWriteOverwrite => '目标标签中的 NDEF 内容将被覆盖。';
+
+  @override
+  String get ndefWriteClassicWarning =>
+      '安卓或 HINATA 读卡器会按需格式化 MIFARE Classic，清除卡片原有数据。';
+
+  @override
+  String get ndefWriteKeepTag => '请保持标签不动，直到写入和验证完成。';
+
+  @override
+  String get ndefWriteIosLimit => 'iPhone 无法格式化 MIFARE Classic；已格式化卡片也需系统支持。';
+
+  @override
+  String get ndefWriteSuccess => 'NDEF 内容已写入并验证';
+
+  @override
+  String get ndefWriteChecking => '正在检查标签';
+
+  @override
+  String get ndefWriteData => '正在写入 NDEF 内容';
+
+  @override
+  String get ndefWriteVerifying => '正在回读验证';
+
+  @override
+  String get ndefRecordCount => 'NDEF 条目数量';
+
+  @override
+  String get ndefDataSize => 'NDEF 数据集大小';
+
+  @override
+  String get ndefTagCapacity => 'NDEF 容量';
+
+  @override
+  String get ndefRecords => 'NDEF 数据集';
+
+  @override
+  String ndefBytes(int bytes) {
+    return '$bytes 字节';
+  }
+
+  @override
+  String get banapassAccessCodeCannotCreate => '此 Banapass 访问代码不可用于新建卡片。';
 }

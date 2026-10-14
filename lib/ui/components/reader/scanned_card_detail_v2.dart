@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../models/card/aic.dart';
 import '../../../models/card/banapass.dart';
 import '../../../models/card/card.dart';
+import '../../../models/card/ndef.dart';
 import '../../../models/card/felica.dart';
 import '../../../models/card/iso15693.dart';
 import '../../../models/card/iso14443a.dart';
@@ -100,7 +101,7 @@ class ScannedCardDetailV2 extends ConsumerWidget {
         shape: BoxShape.circle,
       ),
       child: Icon(
-        Icons.credit_card_rounded,
+        card is NdefCard ? Icons.nfc : Icons.credit_card_rounded,
         size: 20,
         color: colorScheme.primary,
       ),
@@ -146,6 +147,26 @@ class _CardFieldDefinition<T> {
 
 List<_CardDetailField> _buildCardDetailFields(ICCard card) {
   final fields = <_CardDetailField>[];
+
+  if (card is NdefCard) {
+    return [
+      if (card.physicalCard != null)
+        ..._buildCardDetailFields(card.physicalCard!),
+      _CardDetailField(
+        label: l10n.ndefRecordCount,
+        value: '${card.records.length}',
+      ),
+      _CardDetailField(
+        label: l10n.ndefDataSize,
+        value: l10n.ndefBytes(card.message.length),
+      ),
+      if (card.capacity != null)
+        _CardDetailField(
+          label: l10n.ndefTagCapacity,
+          value: l10n.ndefBytes(card.capacity!),
+        ),
+    ];
+  }
 
   if (card is TransitCard) {
     fields.add(
@@ -199,6 +220,8 @@ List<_CardDetailField> _buildCardDetailFields(ICCard card) {
     ..._extractFields<HasAccessCode>(card, _accessCodeFieldDefinitions),
     ..._extractFields<Aic>(card, _aicFieldDefinitions),
     ..._extractFields<Banapass>(card, _banapassFieldDefinitions),
+    if (card is CardData && card.physicalCard != null)
+      ..._buildCardDetailFields(card.physicalCard!),
     ..._extractFields<Felica>(card, _felicaPrimaryFieldDefinitions),
     ..._extractFields<Iso14443>(card, _iso14443FieldDefinitions),
     ..._extractFields<Iso15693>(card, _iso15693FieldDefinitions),
@@ -211,11 +234,12 @@ List<_CardDetailField> _buildCardDetailFields(ICCard card) {
   }
 
   return [
-    _CardDetailField(
-      label: 'ID',
-      value: card.idString.toUpperCase(),
-      groupInFours: true,
-    ),
+    if (card.id.isNotEmpty)
+      _CardDetailField(
+        label: 'ID',
+        value: card.idString.toUpperCase(),
+        groupInFours: true,
+      ),
   ];
 }
 
@@ -325,8 +349,9 @@ String? _epassValue(HasEPass card) => card.epass;
 String? _felicaPmm(Felica card) => _upperHex(card.pmmString);
 String? _felicaSystemCode(Felica card) => card.systemCodeDisplay;
 String? _iso14443Uid(Iso14443 card) => _upperHex(card.idString);
-String? _iso14443Sak(Iso14443 card) => card.sakDisplay;
-String? _iso14443Atqa(Iso14443 card) => card.atqaDisplay;
+String? _iso14443Sak(Iso14443 card) => card.sakKnown ? card.sakDisplay : null;
+String? _iso14443Atqa(Iso14443 card) =>
+    card.atqaKnown ? card.atqaDisplay : null;
 String? _iso15693Uid(Iso15693 card) => _upperHex(card.idString);
 
 class _CardDetailHeader extends StatelessWidget {

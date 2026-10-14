@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hinata_go/context_extensions.dart';
 
 import '../../../models/card/card.dart';
+import '../../../models/card/ndef.dart';
 import '../../../models/card/scanned_card.dart';
 import '../../../models/card/transit.dart';
 import '../../../models/remote_instance.dart';
@@ -14,6 +16,7 @@ import '../../components/instances/select_instance_dialog.dart';
 import '../../widgets/save_card_dialog.dart';
 import 'scanned_card_detail_v2.dart';
 import 'transit_history_card.dart';
+import 'ndef_records_card.dart';
 
 class CurrentScanResultPanel extends HookConsumerWidget {
   const CurrentScanResultPanel({super.key});
@@ -23,7 +26,14 @@ class CurrentScanResultPanel extends HookConsumerWidget {
     final session = ref.watch(currentScanSessionProvider);
     final currentScan = session.scannedCard;
 
-    if (currentScan == null) {
+    final card = currentScan?.card;
+    final opensPrism =
+        !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.android) &&
+        card is NdefCard &&
+        card.prismUrl != null;
+    if (currentScan == null || opensPrism) {
       return const SizedBox.shrink();
     }
 
@@ -174,6 +184,10 @@ class _CurrentScanResultContent extends StatelessWidget {
           animationController: animationController,
           onClear: onClear,
         ),
+        if (card is NdefCard) ...[
+          const SizedBox(height: 16),
+          NdefRecordsCard(card: card as NdefCard),
+        ],
         if (card is TransitCard) ...[
           const SizedBox(height: 16),
           TransitHistoryCard(card: card as TransitCard),

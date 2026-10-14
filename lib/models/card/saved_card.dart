@@ -50,7 +50,10 @@ class SavedCard {
     return SavedCard(
       id: json['id'] as String,
       name: json['name'] as String,
-      card: ICCard.fromJson(json['card'] as Map<String, dynamic>),
+      card: ICCard.fromJson(
+        json['card'] as Map<String, dynamic>,
+        source: json['source'] as String?,
+      ),
       folderId: json['folderId'] as String,
       source: json['source'] as String? ?? 'Direct',
     );
