@@ -1,10 +1,13 @@
 import 'iso14443a.dart';
 
+/// Old blue NESiCA card, NOT the aic NESiCA.
 class Nesica extends Iso14443 {
   Nesica(super.id, super.sak, super.atqa, {required this.serial, super.tags});
 
+  /// Card serial as plain ASCII, e.g. `1234567890123456`.
   final String serial;
 
+  /// [serial] grouped in fours for display, e.g. `1234 5678 9012 3456`.
   String get serialFormatted {
     if (serial.isEmpty) return serial;
     final groups = <String>[];

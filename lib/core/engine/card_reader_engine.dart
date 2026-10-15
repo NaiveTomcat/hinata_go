@@ -380,10 +380,17 @@ class CardReaderEngine {
     );
   }
 
+  /// Reads an old NESiCA card, which is a MIFARE Ultralight.
+  ///
+  /// The card does not authenticate, so it is read with raw READ commands
+  /// ([0x30, page]). Returns null for MIFARE Classic, ISO-DEP and NDEF-formatted
+  /// tags, and for any tag that does not carry the NESiCA marker, so the caller
+  /// can fall back to [_unsupported].
   Future<ScannedCard?> _tryReadNesica(
     Iso14443 tag, {
     required String source,
   }) async {
+    // Skip MIFARE Classic (SAK bit 3) and ISO-DEP (SAK bit 5) cards.
     if ((tag.sak & 0x08) != 0 || (tag.sak & 0x20) != 0 || tag.id.length < 7) {
       return null;
     }
@@ -399,7 +406,9 @@ class CardReaderEngine {
         pages.addAll(response.take(16));
       }
       if (pages.length < 36) return null;
+      // Reject NFC Forum Type 2 (NDEF) tags by their capability container.
       if (pages[12] == 0xE1) return null;
+      // NESiCA cards start page 4 with 'T'.
       if (pages[16] != 0x54) return null;
       serial = _decodeAscii(pages.sublist(20, 36));
     } catch (e) {
@@ -419,6 +428,8 @@ class CardReaderEngine {
     );
   }
 
+  /// Decodes a run of printable ASCII bytes, stopping at the first
+  /// non-printable byte.
   String _decodeAscii(List<int> bytes) {
     final buffer = StringBuffer();
     for (final byte in bytes) {
