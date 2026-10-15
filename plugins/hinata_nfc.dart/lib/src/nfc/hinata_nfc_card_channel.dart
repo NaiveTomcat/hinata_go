@@ -36,6 +36,12 @@ class HinataNfcCardChannel implements NfcCardChannel {
         );
       }
 
+      if (res.first & 0x3f != 0) {
+        throw NfcException(
+          type: NfcErrorType.readError,
+          message: 'PN532 exchange failed: ${res.first}',
+        );
+      }
       log(res.toString());
 
       // PN532 returns the response including status byte at res[0] (0x00 for success)

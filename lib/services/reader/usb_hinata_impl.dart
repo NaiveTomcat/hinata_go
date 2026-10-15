@@ -8,6 +8,8 @@ import 'package:hinata_go/models/card/scanned_card.dart';
 import 'package:hinata_go/models/card/felica.dart';
 import 'package:hinata_go/models/card/iso14443a.dart';
 import '../../core/engine/card_reader_engine.dart';
+import '../nfc/ndef_tag_service.dart';
+import '../../models/card/card.dart';
 
 enum DeviceConnectionState { disconnected, connecting, connected, error }
 
@@ -168,7 +170,9 @@ class UsbHinataDeviceImpl {
       if (felicaTag != null) {
         _activeTag = felicaTag;
         return _resolvePollResult(
-          await engine.processTag(
+          await _readTagWithNdef(
+            engine,
+            channel,
             felicaTag,
             source: 'HINATA',
             readExtended: readExtended,
@@ -180,7 +184,9 @@ class UsbHinataDeviceImpl {
       final isoTag = await _pollIsoTag();
       if (isoTag != null) {
         _activeTag = isoTag;
-        final result = await engine.processTag(
+        final result = await _readTagWithNdef(
+          engine,
+          channel,
           isoTag,
           source: 'HINATA',
           readExtended: readExtended,
@@ -195,7 +201,9 @@ class UsbHinataDeviceImpl {
           if (retryTag != null) {
             _activeTag = retryTag;
             return _resolvePollResult(
-              await engine.processTag(
+              await _readTagWithNdef(
+                engine,
+                channel,
                 retryTag,
                 source: 'HINATA',
                 readExtended: readExtended,
@@ -214,6 +222,39 @@ class UsbHinataDeviceImpl {
       _activeTag = null;
       return _resolvePollResult(const CardReadResult.incomplete());
     }
+  }
+
+  Future<CardReadResult> _readTagWithNdef(
+    CardReaderEngine engine,
+    NfcCardChannel channel,
+    ICCard tag, {
+    required String source,
+    required bool readExtended,
+  }) async {
+    final classic = tag is Iso14443 && tag.isMifareClassicCandidate;
+    try {
+      final ndefChannel = tag is Iso14443
+          ? HinataNfcCardChannel(_hinata.pn532Api, expectedUid: tag.id)
+          : channel;
+      final card = await NdefTagService(ndefChannel).read(tag);
+      if (card != null) {
+        return CardReadResult.recognized(
+          ScannedCard(card: card, source: source),
+        );
+      }
+    } on FormatException {
+      return const CardReadResult.incomplete();
+    } on NfcException catch (error) {
+      // Non-NDEF tags may reject the NDEF application / capability probe.
+      if (classic || error.type == NfcErrorType.timeout) {
+        return const CardReadResult.incomplete();
+      }
+    }
+    return await engine.processTag(
+      tag,
+      source: source,
+      readExtended: readExtended,
+    );
   }
 
   Future<HinataMifareTarget?> pollMifareTarget() async {

@@ -29,6 +29,7 @@ class CardTag {
 
   /// Standard & Brand Tags
   static const amusementIc = CardTag('amusement_ic');
+  static const ndef = CardTag('ndef');
   static const aime = CardTag('aime');
   static const banapass = CardTag('banapass');
   static const suica = CardTag('suica');
@@ -74,6 +75,8 @@ class CardTag {
         return 'ISO 15693';
       case 'amusement_ic':
         return 'Amusement IC';
+      case 'ndef':
+        return 'NDEF';
       case 'aime':
         return 'Aime';
       case 'banapass':
@@ -167,6 +170,9 @@ class CardTag {
       case 'Amusement IC':
       case 'amusement_ic':
         return CardTag.amusementIc;
+      case 'NDEF':
+      case 'ndef':
+        return CardTag.ndef;
       case 'Aime':
       case 'aime':
         return CardTag.aime;

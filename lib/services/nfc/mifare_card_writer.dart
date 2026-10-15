@@ -16,6 +16,7 @@ enum MifareWriteStage {
 
 enum MifareWriteFailure {
   unsupportedCard,
+  capacityExceeded,
   authenticationFailed,
   invalidAccessBits,
   permissionDenied,

@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:cardcipher/bana.dart';
+import 'package:flutter/foundation.dart';
 
 import 'card.dart';
 import 'iso14443a.dart';
@@ -41,11 +40,8 @@ class BanapassAccessCodeFields {
 /// Physical blocks, Access Code and the canonical fields are alternate
 /// serializations of one card. Construction accepts any representation, while
 /// derivation and reverse derivation are kept on the object itself.
-class Banapass extends Iso14443 implements HasAccessCode {
+class Banapass extends CardData implements HasAccessCode {
   Banapass(
-    super.id,
-    super.sak,
-    super.atqa,
     Uint8List block1,
     Uint8List? block2, {
     String? persistedAccessCode,
@@ -56,6 +52,7 @@ class Banapass extends Iso14443 implements HasAccessCode {
     int? appData,
     bool? dualKey,
     super.tags,
+    super.physicalCard,
   }) : _storedBlock1 = _copy(block1),
        _storedBlock2 = _copy(block2),
        _persistedAccessCode = persistedAccessCode,
@@ -66,10 +63,7 @@ class Banapass extends Iso14443 implements HasAccessCode {
        _appData = appData,
        _dualKeyOverride = dualKey;
 
-  Banapass.fromBlocks(
-    Uint8List id,
-    int sak,
-    int atqa, {
+  Banapass.fromBlocks({
     required Uint8List block1,
     Uint8List? block2,
     String? accessCode,
@@ -80,10 +74,8 @@ class Banapass extends Iso14443 implements HasAccessCode {
     int? appData,
     bool? dualKey,
     List<CardTag> tags = const [],
+    ICCard? physicalCard,
   }) : this(
-         id,
-         sak,
-         atqa,
          block1,
          block2,
          persistedAccessCode: accessCode,
@@ -94,12 +86,10 @@ class Banapass extends Iso14443 implements HasAccessCode {
          appData: appData,
          dualKey: dualKey,
          tags: tags,
+         physicalCard: physicalCard,
        );
 
-  Banapass.fromAccessCode(
-    Uint8List id,
-    int sak,
-    int atqa, {
+  Banapass.fromAccessCode({
     required String accessCode,
     required bool dualKey,
     int? serial,
@@ -108,10 +98,8 @@ class Banapass extends Iso14443 implements HasAccessCode {
     int? unknown06,
     int? appData,
     List<CardTag> tags = const [],
+    ICCard? physicalCard,
   }) : this.fromCanonical(
-         id,
-         sak,
-         atqa,
          accessCode: accessCode,
          serial: serial,
          keyNumber: keyNumber,
@@ -120,12 +108,10 @@ class Banapass extends Iso14443 implements HasAccessCode {
          appData: appData,
          dualKey: dualKey,
          tags: tags,
+         physicalCard: physicalCard,
        );
 
-  Banapass.fromCanonical(
-    super.id,
-    super.sak,
-    super.atqa, {
+  Banapass.fromCanonical({
     Uint8List? block1,
     Uint8List? block2,
     String? accessCode,
@@ -136,6 +122,7 @@ class Banapass extends Iso14443 implements HasAccessCode {
     int? appData,
     bool? dualKey,
     super.tags = const [],
+    super.physicalCard,
   }) : _storedBlock1 = _copy(block1),
        _storedBlock2 = _copy(block2),
        _persistedAccessCode = accessCode,
@@ -191,9 +178,15 @@ class Banapass extends Iso14443 implements HasAccessCode {
   int? get keyNumber =>
       _keyNumber ?? _sectorFields?.keyNumber ?? _accessCodeFields?.keyNumber;
 
-  int? get unknown04 => _unknown04 ?? _sectorFields?.unknown04;
+  int? get unknown04 =>
+      _unknown04 ??
+      _sectorFields?.unknown04 ??
+      (_storedBlock1 == null && serial != null && keyNumber != null ? 0 : null);
 
-  int? get unknown06 => _unknown06 ?? _sectorFields?.unknown06;
+  int? get unknown06 =>
+      _unknown06 ??
+      _sectorFields?.unknown06 ??
+      (_storedBlock1 == null && serial != null && keyNumber != null ? 3 : null);
 
   int? get appData => _appData ?? _accessCodeFields?.appData;
 
@@ -203,6 +196,30 @@ class Banapass extends Iso14443 implements HasAccessCode {
   @override
   String get showedValue =>
       accessCodeString?.toUpperCase() ?? idString.toUpperCase();
+
+  @override
+  bool isSameCard(ICCard other) {
+    if (other is! Banapass) return false;
+    final accessCode = accessCodeString;
+    final otherAccessCode = other.accessCodeString;
+    if (accessCode != null &&
+        accessCode.isNotEmpty &&
+        otherAccessCode != null &&
+        otherAccessCode.isNotEmpty) {
+      return accessCode == otherAccessCode;
+    }
+    final first = effectiveBlock1;
+    final otherFirst = other.effectiveBlock1;
+    if (first != null &&
+        first.length == 16 &&
+        otherFirst != null &&
+        otherFirst.length == 16) {
+      return dualKey == other.dualKey &&
+          listEquals(first, otherFirst) &&
+          listEquals(effectiveBlock2, other.effectiveBlock2);
+    }
+    return super.isSameCard(other);
+  }
 
   @override
   String get name => 'Banapass';
@@ -241,9 +258,10 @@ class Banapass extends Iso14443 implements HasAccessCode {
 
   /// Serializes the card for the structured remote packet while keeping the
   /// pre-canonical Banapass field set available to older DLLs.
-  Map<String, dynamic> toRemoteJson({required bool includeCanonicalFields}) {
+  @override
+  Map<String, dynamic> toRemoteJson({bool includeCanonicalFields = true}) {
     if (includeCanonicalFields) {
-      return toJson();
+      return super.toRemoteJson();
     }
 
     final resolvedBlock1 = effectiveBlock1;
@@ -253,20 +271,28 @@ class Banapass extends Iso14443 implements HasAccessCode {
       );
     }
     final resolvedBlock2 = effectiveBlock2;
+    final legacy = super.toRemoteJson()
+      ..removeWhere(
+        (key, _) => const {
+          'serial',
+          'keyNumber',
+          'unknown04',
+          'unknown06',
+          'appData',
+          'dualKey',
+        }.contains(key),
+      );
     return {
-      ...super.toJson(),
+      ...legacy,
       'block1': _hex(resolvedBlock1),
       'block2': resolvedBlock2 == null ? null : _hex(resolvedBlock2),
       if (accessCodeString != null) 'accessCode': accessCodeString,
     };
   }
 
-  factory Banapass.fromJson(Map<String, dynamic> json) {
-    final iso = Iso14443.fromJson(json);
+  factory Banapass.fromJson(Map<String, dynamic> json, {String? source}) {
+    final physical = CardData.readPhysicalCard(json, source: source);
     return Banapass.fromCanonical(
-      iso.id,
-      iso.sak,
-      iso.atqa,
       block1: _parseOptionalBlock(json['block1']),
       block2: _parseOptionalBlock(json['block2']),
       accessCode: json['accessCode'] as String?,
@@ -276,7 +302,13 @@ class Banapass extends Iso14443 implements HasAccessCode {
       unknown06: json['unknown06'] as int?,
       appData: json['appData'] as int?,
       dualKey: json['dualKey'] as bool?,
-      tags: iso.tags,
+      physicalCard: physical,
+      tags:
+          (json['tags'] as List<dynamic>?)
+              ?.map(CardTag.fromJson)
+              .where((tag) => physical != null || tag != CardTag.mifareClassic)
+              .toList() ??
+          const [],
     );
   }
 
@@ -386,9 +418,7 @@ extension ToBanapass on Iso14443 {
     Uint8List? block2, {
     List<CardTag>? tags,
   }) => Banapass.fromBlocks(
-    id,
-    sak,
-    atqa,
+    physicalCard: this,
     block1: block1,
     block2: block2,
     tags: tags ?? this.tags,

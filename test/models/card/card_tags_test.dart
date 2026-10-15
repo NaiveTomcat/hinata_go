@@ -108,11 +108,9 @@ void main() {
 
     test('Aime preserves tags across JSON serialization', () {
       final card = Aime(
-        Uint8List.fromList([1, 2, 3, 4]),
-        0x08,
-        0x0004,
         Uint8List(10),
         tags: const [CardTag.aime, CardTag.mifareClassic],
+        physicalCard: Iso14443(Uint8List.fromList([1, 2, 3, 4]), 0x08, 0x0004),
       );
 
       final json = card.toJson();
@@ -123,12 +121,10 @@ void main() {
 
     test('Banapass preserves tags across JSON serialization', () {
       final card = Banapass(
-        Uint8List.fromList([1, 2, 3, 4]),
-        0x08,
-        0x0004,
         Uint8List(16),
         null,
         tags: const [CardTag.banapass, CardTag.mifareClassic],
+        physicalCard: Iso14443(Uint8List.fromList([1, 2, 3, 4]), 0x08, 0x0004),
       );
 
       final json = card.toJson();

@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hinata_go/models/card/scanned_card.dart';
+import 'package:hinata_go/models/card/ndef.dart';
+import 'package:ndef/ndef.dart' as ndef;
 import 'package:hinata_go/models/card/tunion.dart';
 import 'package:hinata_go/providers/current_scan_session_provider.dart';
 
@@ -18,6 +20,38 @@ TUnion _tUnionWithId(List<int> id) {
 }
 
 void main() {
+  test('changed NDEF content on the same tag starts a new scan session', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final notifier = container.read(currentScanSessionProvider.notifier);
+    ScannedCard card(String value) => ScannedCard(
+      card: NdefCard.fromRecords([
+        ndef.TextRecord(text: value, language: 'en'),
+      ]),
+      source: 'HINATA',
+    );
+    expect(
+      notifier.recordScan(
+        card('one'),
+        presenceMode: ScanPresenceMode.explicitRemoval,
+      ),
+      ScanRecordResult.accepted,
+    );
+    expect(
+      notifier.recordScan(
+        card('one'),
+        presenceMode: ScanPresenceMode.explicitRemoval,
+      ),
+      ScanRecordResult.duplicate,
+    );
+    expect(
+      notifier.recordScan(
+        card('two'),
+        presenceMode: ScanPresenceMode.explicitRemoval,
+      ),
+      ScanRecordResult.accepted,
+    );
+  });
   test('deduplicates T-Union scans by card number instead of ISO UID', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);

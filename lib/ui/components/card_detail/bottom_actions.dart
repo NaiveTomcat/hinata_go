@@ -4,6 +4,7 @@ import 'package:hinata_go/context_extensions.dart';
 class CardDetailBottomActions extends StatelessWidget {
   final VoidCallback? onSend;
   final VoidCallback onSave;
+  final String? saveLabel;
   final VoidCallback? onWrite;
   final bool isSending;
   final bool isSaving;
@@ -13,6 +14,7 @@ class CardDetailBottomActions extends StatelessWidget {
     super.key,
     this.onSend,
     required this.onSave,
+    this.saveLabel,
     this.onWrite,
     required this.isSending,
     required this.isSaving,
@@ -100,7 +102,9 @@ class CardDetailBottomActions extends StatelessWidget {
           ),
         ),
         icon: isSaving ? _buildSpinner() : const Icon(Icons.folder_special),
-        label: Text(isSaving ? l10n.savingUpper : l10n.saveUpper),
+        label: Text(
+          isSaving ? l10n.savingUpper : (saveLabel ?? l10n.saveUpper),
+        ),
       ),
     );
   }

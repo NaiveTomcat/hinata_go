@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:convert/convert.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+import '../models/card/ndef.dart';
 import '../models/card/scanned_card.dart';
 import '../models/card/transit.dart';
 
@@ -212,7 +214,9 @@ class CurrentScanSessionNotifier extends Notifier<CurrentScanSessionState> {
   String _buildDedupeKey(ScannedCard scannedCard) {
     final card = scannedCard.card;
     final cardNumber = card is TransitCard ? card.cardNumber : null;
-    final cardIdentity = cardNumber != null && cardNumber.isNotEmpty
+    final cardIdentity = card is NdefCard
+        ? '${card.idString}:${hex.encode(card.message)}'
+        : cardNumber != null && cardNumber.isNotEmpty
         ? cardNumber
         : (card.gamePayload ?? card.idString);
     final cardType = card.type ?? card.runtimeType.toString();

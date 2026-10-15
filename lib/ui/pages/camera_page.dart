@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -44,7 +42,7 @@ class CameraPage extends HookConsumerWidget {
           isNavigatingRef.value = true; // Set flag immediately
 
           final accessCodeBytes = ICCard.hexToBytes(rawValue);
-          final aime = Aime(Uint8List(4), 0x08, 0x0004, accessCodeBytes);
+          final aime = Aime(accessCodeBytes, tags: const [CardTag.aime]);
 
           ref
               .read(nfcProvider.notifier)

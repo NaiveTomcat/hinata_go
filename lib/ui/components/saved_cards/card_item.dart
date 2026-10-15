@@ -5,6 +5,7 @@ import 'package:hinata_go/context_extensions.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../models/card/saved_card.dart';
+import '../../../models/card/ndef.dart';
 import '../../../providers/app_state_provider.dart';
 import '../../../providers/card_sender.dart';
 
@@ -43,7 +44,10 @@ class CardItem extends ConsumerWidget {
                     ),
                   ),
                 )
-              : Icon(Icons.credit_card, color: colorScheme.primary),
+              : Icon(
+                  card.card is NdefCard ? Icons.nfc : Icons.credit_card,
+                  color: colorScheme.primary,
+                ),
         ),
         title: Text(
           card.name,

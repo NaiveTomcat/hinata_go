@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../../core/engine/mifare_write_payload.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/card/saved_card.dart';
+import '../../../models/card/ndef.dart';
 import '../../../providers/card_writer_provider.dart';
 import '../../../services/nfc/mifare_card_writer.dart';
 
@@ -13,10 +15,47 @@ Future<void> showCardWriteFlow(
   WidgetRef ref,
   SavedCard card,
 ) async {
-  final mode = await showDialog<CardWriteMode>(
-    context: context,
-    builder: (context) => const _WriteOptionsDialog(),
-  );
+  final isNdef = card.card is NdefCard;
+  final mode = isNdef
+      ? (await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text(l10n.ndefWriteTitle),
+                    content: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 440),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _WarningRow(text: l10n.ndefWriteOverwrite),
+                            _WarningRow(text: l10n.ndefWriteClassicWarning),
+                            _WarningRow(text: l10n.ndefWriteKeepTag),
+                            if (defaultTargetPlatform == TargetPlatform.iOS)
+                              _WarningRow(text: l10n.ndefWriteIosLimit),
+                          ],
+                        ),
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: Text(l10n.cancel),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: Text(l10n.cardWriteStart),
+                      ),
+                    ],
+                  ),
+                ) ==
+                true
+            ? CardWriteMode.rewritable
+            : null)
+      : await showDialog<CardWriteMode>(
+          context: context,
+          builder: (context) => const _WriteOptionsDialog(),
+        );
   if (mode == null || !context.mounted) return;
 
   if (mode == CardWriteMode.permanentlyReadOnly) {
@@ -52,7 +91,8 @@ Future<void> showCardWriteFlow(
   await showDialog<void>(
     context: context,
     barrierDismissible: false,
-    builder: (context) => _WriteProgressDialog(operation: operation),
+    builder: (context) =>
+        _WriteProgressDialog(operation: operation, isNdef: isNdef),
   );
 }
 
@@ -149,8 +189,9 @@ class _WarningRow extends StatelessWidget {
 
 class _WriteProgressDialog extends ConsumerWidget {
   final Future<bool> operation;
+  final bool isNdef;
 
-  const _WriteProgressDialog({required this.operation});
+  const _WriteProgressDialog({required this.operation, required this.isNdef});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -158,40 +199,47 @@ class _WriteProgressDialog extends ConsumerWidget {
     return PopScope(
       canPop: !writer.isWriting,
       child: AlertDialog(
-        title: Text(l10n.cardWriteTitle),
-        content: FutureBuilder<bool>(
-          future: operation,
-          builder: (context, snapshot) {
-            final finished = snapshot.connectionState == ConnectionState.done;
-            final success = finished && snapshot.data == true;
-            return Row(
-              children: [
-                if (!finished)
-                  const SizedBox.square(
-                    dimension: 28,
-                    child: CircularProgressIndicator(strokeWidth: 3),
-                  )
-                else
-                  Icon(
-                    success ? Icons.check_circle_outline : Icons.error_outline,
-                    size: 30,
-                    color: success
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.error,
+        title: Text(isNdef ? l10n.ndefWriteTitle : l10n.cardWriteTitle),
+        content: SizedBox(
+          width: 400,
+          child: FutureBuilder<bool>(
+            future: operation,
+            builder: (context, snapshot) {
+              final finished = snapshot.connectionState == ConnectionState.done;
+              final success = finished && snapshot.data == true;
+              return Row(
+                children: [
+                  if (!finished)
+                    const SizedBox.square(
+                      dimension: 28,
+                      child: CircularProgressIndicator(strokeWidth: 3),
+                    )
+                  else
+                    Icon(
+                      success
+                          ? Icons.check_circle_outline
+                          : Icons.error_outline,
+                      size: 30,
+                      color: success
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.error,
+                    ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      finished
+                          ? (success
+                                ? (isNdef
+                                      ? l10n.ndefWriteSuccess
+                                      : l10n.cardWriteSuccess)
+                                : _failureText(writer.failure))
+                          : _progressText(writer),
+                    ),
                   ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    finished
-                        ? (success
-                              ? l10n.cardWriteSuccess
-                              : _failureText(writer.failure))
-                        : _progressText(writer),
-                  ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
         actions: [
           if (writer.canCancel)
@@ -219,17 +267,22 @@ class _WriteProgressDialog extends ConsumerWidget {
       return l10n.cardWriteWaitingForCard;
     }
     return switch (state.stage) {
-      MifareWriteStage.checkingCard => l10n.cardWriteCheckingCard,
+      MifareWriteStage.checkingCard =>
+        isNdef ? l10n.ndefWriteChecking : l10n.cardWriteCheckingCard,
       MifareWriteStage.checkingPermissions => l10n.cardWriteCheckingPermissions,
-      MifareWriteStage.writingData => l10n.cardWriteWritingData,
+      MifareWriteStage.writingData =>
+        isNdef ? l10n.ndefWriteData : l10n.cardWriteWritingData,
       MifareWriteStage.lockingCard => l10n.cardWriteLockingCard,
-      MifareWriteStage.verifying => l10n.cardWriteVerifying,
+      MifareWriteStage.verifying =>
+        isNdef ? l10n.ndefWriteVerifying : l10n.cardWriteVerifying,
       null => l10n.cardWriteWaitingForCard,
     };
   }
 
   String _failureText(MifareWriteFailure? failure) => switch (failure) {
-    MifareWriteFailure.unsupportedCard => l10n.cardWriteUnsupportedTarget,
+    MifareWriteFailure.capacityExceeded => l10n.ndefCapacityExceeded,
+    MifareWriteFailure.unsupportedCard =>
+      isNdef ? l10n.ndefUnsupportedTarget : l10n.cardWriteUnsupportedTarget,
     MifareWriteFailure.authenticationFailed => l10n.cardWriteUnknownKey,
     MifareWriteFailure.invalidAccessBits => l10n.cardWriteInvalidAccessBits,
     MifareWriteFailure.permissionDenied => l10n.cardWritePermissionDenied,

@@ -51,10 +51,12 @@ void main() {
 
       final scannedCard = ScannedCard(
         card: Aime(
-          Uint8List.fromList([0x01, 0x02, 0x03, 0x04]),
-          0x08,
-          0x0004,
           Uint8List.fromList(List<int>.generate(10, (index) => index)),
+          physicalCard: Iso14443(
+            Uint8List.fromList([0x01, 0x02, 0x03, 0x04]),
+            0x08,
+            0x0004,
+          ),
         ),
         source: 'HINATA',
       );
@@ -223,10 +225,12 @@ void main() {
 
       final recognizedCard = ScannedCard(
         card: Aime(
-          Uint8List.fromList([1, 2, 3, 4]),
-          0x08,
-          0x0004,
           Uint8List.fromList(List<int>.generate(10, (i) => i)),
+          physicalCard: Iso14443(
+            Uint8List.fromList([1, 2, 3, 4]),
+            0x08,
+            0x0004,
+          ),
         ),
         source: 'NFC',
       );

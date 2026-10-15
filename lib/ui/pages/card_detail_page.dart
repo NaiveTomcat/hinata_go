@@ -4,6 +4,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/engine/mifare_write_payload.dart';
 import '../../l10n/l10n.dart';
 import '../../models/card/card.dart';
+import '../../models/card/ndef.dart';
+import '../components/saved_cards/ndef_editor_dialog.dart';
 import '../../models/card/transit.dart';
 import '../../models/card/saved_card.dart';
 import '../../models/remote_instance.dart';
@@ -16,6 +18,7 @@ import '../components/card_detail/write_card_dialog.dart';
 import '../components/instances/select_instance_dialog.dart';
 import '../components/reader/scanned_card_detail_v2.dart';
 import '../components/reader/transit_history_card.dart';
+import '../components/reader/ndef_records_card.dart';
 import '../widgets/save_card_dialog.dart';
 
 class CardDetailPage extends HookConsumerWidget {
@@ -29,10 +32,18 @@ class CardDetailPage extends HookConsumerWidget {
   // Actions
   // ---------------------------------------------------------------------------
 
-  Future<void> _saveCard(BuildContext context, ICCard activeCard) async {
+  Future<void> _saveCard(
+    BuildContext context,
+    ICCard activeCard, {
+    String? initialName,
+  }) async {
     await showDialog<bool>(
       context: context,
-      builder: (context) => SaveCardDialog(card: activeCard, source: 'Saved'),
+      builder: (context) => SaveCardDialog(
+        card: activeCard,
+        source: 'Saved',
+        initialName: initialName,
+      ),
     );
   }
 
@@ -133,6 +144,7 @@ class CardDetailPage extends HookConsumerWidget {
     final senderState = ref.watch(cardSenderProvider);
     final writerState = ref.watch(cardWriterProvider);
     final writerAvailable = ref.watch(cardWriterAvailableProvider);
+    final ndefWriterAvailable = ref.watch(ndefWriterAvailableProvider);
     final savedCards = ref.watch(savedCardsProvider);
 
     SavedCard? activeSavedCard;
@@ -168,7 +180,9 @@ class CardDetailPage extends HookConsumerWidget {
           ref,
           senderState,
           writerState,
-          writerAvailable,
+          (activeSavedCard?.card ?? card) is NdefCard
+              ? ndefWriterAvailable
+              : writerAvailable,
           activeSavedCard,
           activeCard,
         ),
@@ -184,16 +198,35 @@ class CardDetailPage extends HookConsumerWidget {
     bool isWriting,
   ) {
     return AppBar(
-      title: Text(l10n.cardDetails(activeSavedCard?.name ?? activeCard.name)),
+      title: Text(
+        activeCard is NdefCard
+            ? l10n.ndefDetails
+            : l10n.cardDetails(activeSavedCard?.name ?? activeCard.name),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
       actions: [
         if (activeSavedCard != null) ...[
-          IconButton(
-            icon: const Icon(Icons.edit_note),
-            onPressed: isWriting
-                ? null
-                : () => _renameCard(context, ref, activeSavedCard),
-            tooltip: l10n.renameCard,
-          ),
+          if (activeCard is NdefCard)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: l10n.ndefEdit,
+              onPressed: isWriting
+                  ? null
+                  : () => showNdefEditor(
+                      context,
+                      initialFolderId: activeSavedCard.folderId,
+                      savedCard: activeSavedCard,
+                    ),
+            ),
+          if (activeCard is! NdefCard)
+            IconButton(
+              icon: const Icon(Icons.edit_note),
+              onPressed: isWriting
+                  ? null
+                  : () => _renameCard(context, ref, activeSavedCard),
+              tooltip: l10n.renameCard,
+            ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
             onPressed: isWriting
@@ -224,6 +257,10 @@ class CardDetailPage extends HookConsumerWidget {
             title: activeSavedCard?.name,
             showHeader: true,
           ),
+          if (activeCard is NdefCard) ...[
+            const SizedBox(height: 16),
+            NdefRecordsCard(card: activeCard),
+          ],
           if (activeCard is TransitCard) ...[
             const SizedBox(height: 16),
             TransitHistoryCard(card: activeCard),
@@ -234,11 +271,19 @@ class CardDetailPage extends HookConsumerWidget {
         onSend: activeCard.gamePayload != null
             ? () => _sendCard(context, ref, activeCard)
             : null,
-        onSave: () => _saveCard(context, activeCard),
+        onSave: () => _saveCard(
+          context,
+          activeCard,
+          initialName: activeCard is NdefCard ? activeSavedCard?.name : null,
+        ),
+        saveLabel: activeCard is NdefCard && activeSavedCard != null
+            ? l10n.ndefSaveCopy
+            : null,
         onWrite:
             activeSavedCard != null &&
                 writerAvailable &&
-                MifareCardWritePayload.canBuild(activeCard)
+                (activeCard is NdefCard ||
+                    MifareCardWritePayload.canBuild(activeCard))
             ? () => showCardWriteFlow(context, ref, activeSavedCard)
             : null,
         isSending: senderState.isSending,

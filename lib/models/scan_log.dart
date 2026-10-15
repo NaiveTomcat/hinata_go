@@ -39,7 +39,10 @@ class ScanLog {
     // Check if we have the new 'card' object or legacy fields
     ICCard card;
     if (json.containsKey('card')) {
-      card = ICCard.fromJson(json['card'] as Map<String, dynamic>);
+      card = ICCard.fromJson(
+        json['card'] as Map<String, dynamic>,
+        source: source,
+      );
     } else {
       // Legacy reconstruction
       final apiType =

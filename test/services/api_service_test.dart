@@ -1,8 +1,12 @@
+import 'package:hinata_go/models/card/card.dart';
+import 'package:hinata_go/models/card/iso14443a.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hinata_go/models/card/aime.dart';
+import 'package:hinata_go/models/card/ndef.dart';
+import 'package:ndef/ndef.dart' as ndef;
 import 'package:hinata_go/models/card/banapass.dart';
 import 'package:hinata_go/models/card/tunion.dart';
 import 'package:hinata_go/models/remote_instance.dart';
@@ -35,11 +39,69 @@ class RecordingClient extends http.BaseClient {
 }
 
 void main() {
+  test('sends portable Aime through the flat legacy wire format', () async {
+    final card = Aime(ICCard.hexToBytes('01234567890123456789'));
+    final client = RecordingClient();
+    final result = await ApiService(httpClient: client).sendCardData(
+      instance: RemoteInstance(
+        id: 'id',
+        name: 'name',
+        icon: 'bear',
+        url: 'https://example.test/remote',
+      ),
+      card: card,
+    );
+    expect(result.success, isTrue);
+    final request = jsonDecode((client.request! as http.Request).body);
+    expect(request['body']['card'], {
+      'type': 'aime',
+      'id': '',
+      'sak': 8,
+      'atqa': 4,
+      'accessCode': '01234567890123456789',
+    });
+    expect(card.physicalCard, isNull);
+    expect(card.toJson().containsKey('sak'), isFalse);
+  });
+
+  test(
+    'portable Banapass keeps canonical wire fields and no nested metadata',
+    () {
+      final card = Banapass.fromCanonical(
+        accessCode: '30746056644448171490',
+        serial: 205050,
+        keyNumber: 6,
+        dualKey: true,
+      );
+      final payload = card.toRemoteJson();
+      expect(payload['id'], '');
+      expect(payload['serial'], 205050);
+      expect(payload['keyNumber'], 6);
+      expect(payload['accessCode'], '30746056644448171490');
+      expect(payload.containsKey('physicalCard'), isFalse);
+      expect(card.hasPhysicalCard, isFalse);
+    },
+  );
+
+  test('never transmits NDEF datasets to a game instance', () async {
+    final client = RecordingClient();
+    final result = await ApiService(httpClient: client).sendCardData(
+      instance: RemoteInstance(
+        id: 'id',
+        name: 'name',
+        icon: 'bear',
+        url: 'https://example.test/remote',
+      ),
+      card: NdefCard.fromRecords([
+        ndef.UriRecord.fromString('https://example.org'),
+      ]),
+    );
+    expect(result.success, isFalse);
+    expect(client.request, isNull);
+  });
   final card = Aime(
-    Uint8List.fromList([1, 2, 3, 4]),
-    0x08,
-    0x0004,
     Uint8List.fromList([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+    physicalCard: Iso14443(Uint8List.fromList([1, 2, 3, 4]), 0x08, 0x0004),
   );
 
   test('sends a V2 card body when password is empty', () async {
@@ -87,26 +149,6 @@ void main() {
         url: 'https://example.test/remote',
       );
       final banapass = Banapass.fromBlocks(
-        Uint8List.fromList([
-          0,
-          2,
-          0x4e,
-          0x42,
-          0x47,
-          0x49,
-          0x43,
-          0x36,
-          0x65,
-          0xd8,
-          0x20,
-          0x63,
-          0x36,
-          0xcd,
-          0xb5,
-          0xc2,
-        ]),
-        0x08,
-        0x0400,
         block1: Uint8List.fromList([
           0x00,
           0x02,
@@ -150,6 +192,28 @@ void main() {
         unknown06: 3,
         appData: 0,
         dualKey: true,
+        physicalCard: Iso14443(
+          Uint8List.fromList([
+            0,
+            2,
+            0x4e,
+            0x42,
+            0x47,
+            0x49,
+            0x43,
+            0x36,
+            0x65,
+            0xd8,
+            0x20,
+            0x63,
+            0x36,
+            0xcd,
+            0xb5,
+            0xc2,
+          ]),
+          0x08,
+          0x0400,
+        ),
       );
 
       final result = await ApiService(
@@ -186,15 +250,13 @@ void main() {
       url: 'https://example.test/remote',
     );
     final banapass = Banapass.fromCanonical(
-      Uint8List.fromList([1, 2, 3, 4]),
-      0x08,
-      0x0400,
       serial: 205050,
       keyNumber: 6,
       unknown04: 0,
       unknown06: 3,
       appData: 0,
       dualKey: false,
+      physicalCard: Iso14443(Uint8List.fromList([1, 2, 3, 4]), 0x08, 0x0400),
     );
 
     final result = await ApiService(

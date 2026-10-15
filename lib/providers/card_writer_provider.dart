@@ -10,9 +10,13 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../core/engine/mifare_write_payload.dart';
 import '../core/engine/nfc_tag_converter.dart';
 import '../l10n/l10n.dart';
+import '../models/card/card.dart';
 import '../models/card/iso14443a.dart';
+import '../models/card/ndef.dart';
 import '../models/card/saved_card.dart';
 import '../services/nfc/mifare_card_writer.dart';
+import '../services/nfc/ndef_tag_service.dart';
+import '../services/nfc/phone_ndef_service.dart';
 import '../services/notification_service.dart';
 import '../services/reader/usb_hinata_impl.dart';
 import 'hardware_device_provider.dart';
@@ -49,6 +53,11 @@ final cardWriterAvailableProvider = Provider<bool>((ref) {
   return hasAndroidNfc || hasReader;
 });
 
+final ndefWriterAvailableProvider = Provider<bool>((ref) {
+  return (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) ||
+      ref.watch(hardwareDeviceProvider).connectedDevice != null;
+});
+
 final cardWriterProvider = NotifierProvider<CardWriter, CardWriterState>(() {
   return CardWriter();
 });
@@ -64,9 +73,10 @@ class CardWriter extends Notifier<CardWriterState> {
     if (state.isWriting) return false;
 
     final notification = ref.read(notificationServiceProvider);
-    late final MifareCardWritePayload payload;
+    final isNdef = card.card is NdefCard;
+    MifareCardWritePayload? payload;
     try {
-      payload = MifareCardWritePayload.fromCard(card.card, mode);
+      if (!isNdef) payload = MifareCardWritePayload.fromCard(card.card, mode);
     } catch (error, stackTrace) {
       log(
         'Failed to build a MIFARE card write payload',
@@ -77,8 +87,12 @@ class CardWriter extends Notifier<CardWriterState> {
       return false;
     }
 
-    if (!ref.read(cardWriterAvailableProvider)) {
-      notification.showError(l10n.cardWriteNoBackend);
+    if (!ref.read(
+      isNdef ? ndefWriterAvailableProvider : cardWriterAvailableProvider,
+    )) {
+      notification.showError(
+        isNdef ? l10n.ndefNoBackend : l10n.cardWriteNoBackend,
+      );
       return false;
     }
 
@@ -98,19 +112,50 @@ class CardWriter extends Notifier<CardWriterState> {
           'Card writing was cancelled before target acquisition',
         );
       }
-      target = await _acquireFirstTarget(reader);
+      target = await _acquireFirstTarget(reader, ndef: isNdef);
 
-      final writer = MifareCardWriter(channel: target.channel, tag: target.tag);
-      await writer.write(
-        payload,
-        isCancelled: () => _cancelRequested,
-        onStage: (stage) {
-          state = CardWriterState(
-            status: CardWriterStatus.writing,
-            stage: stage,
+      void onStage(MifareWriteStage stage) {
+        state = CardWriterState(status: CardWriterStatus.writing, stage: stage);
+      }
+
+      final targetTag = target.tag;
+      if (card.card case final NdefCard ndefCard) {
+        final phoneTag = target.phoneTag;
+        final rawWritable =
+            targetTag is Iso14443 &&
+            (targetTag.sak == 0 || targetTag.isMifareClassicCandidate);
+        if (phoneTag != null && (Platform.isIOS || !rawWritable)) {
+          await writePhoneNdef(
+            phoneTag,
+            ndefCard,
+            onStage: onStage,
+            isCancelled: () => _cancelRequested,
           );
-        },
-      );
+        } else if (targetTag is Iso14443) {
+          await NdefTagService(target.channel).write(
+            targetTag,
+            ndefCard,
+            isCancelled: () => _cancelRequested,
+            onStage: onStage,
+          );
+        } else {
+          throw const MifareCardWriteException(
+            MifareWriteFailure.unsupportedCard,
+            'Unsupported NDEF target',
+          );
+        }
+      } else if (targetTag is Iso14443) {
+        await MifareCardWriter(channel: target.channel, tag: targetTag).write(
+          payload!,
+          isCancelled: () => _cancelRequested,
+          onStage: onStage,
+        );
+      } else {
+        throw const MifareCardWriteException(
+          MifareWriteFailure.unsupportedCard,
+          'Not a Classic card',
+        );
+      }
 
       state = const CardWriterState(status: CardWriterStatus.success);
       notification.showSuccess(l10n.cardWriteSuccess);
@@ -123,7 +168,7 @@ class CardWriter extends Notifier<CardWriterState> {
       if (error.failure == MifareWriteFailure.cancelled) {
         notification.showInfo(l10n.cardWriteCancelled);
       } else {
-        notification.showError(_localizedFailure(error.failure));
+        notification.showError(_localizedFailure(error.failure, ndef: isNdef));
       }
       return false;
     } catch (error, stackTrace) {
@@ -165,12 +210,15 @@ class CardWriter extends Notifier<CardWriterState> {
     }
   }
 
-  Future<_WriteTarget> _acquireFirstTarget(UsbHinataDeviceImpl? reader) async {
+  Future<_WriteTarget> _acquireFirstTarget(
+    UsbHinataDeviceImpl? reader, {
+    bool ndef = false,
+  }) async {
     final cancellation = _AcquisitionCancellation();
     _activeAcquisition = cancellation;
     final sources = <Future<_WriteTarget>>[];
-    if (!kIsWeb && Platform.isAndroid) {
-      sources.add(_acquirePhoneTarget(cancellation));
+    if (!kIsWeb && (Platform.isAndroid || (ndef && Platform.isIOS))) {
+      sources.add(_acquirePhoneTarget(cancellation, ndef: ndef));
     }
     if (reader != null) {
       sources.add(_acquireReaderTarget(reader, cancellation));
@@ -203,22 +251,32 @@ class CardWriter extends Notifier<CardWriterState> {
   }
 
   Future<_WriteTarget> _acquirePhoneTarget(
-    _AcquisitionCancellation cancellation,
-  ) async {
+    _AcquisitionCancellation cancellation, {
+    bool ndef = false,
+  }) async {
     while (!cancellation.cancelled) {
       try {
         final rawTag = await FlutterNfcKit.poll(
-          readIso18092: false,
+          readIso18092: ndef,
           readIso14443A: true,
           readIso14443B: false,
-          readIso15693: false,
+          readIso15693: ndef,
         );
-        final tag = rawTag.toInternalTag();
-        if (tag is Iso14443) {
+        final tag =
+            rawTag.toInternalTag() ??
+            (ndef
+                ? ICCard(
+                    rawTag.id == 'unknown'
+                        ? Uint8List(0)
+                        : ICCard.hexToBytes(rawTag.id),
+                  )
+                : null);
+        if (tag is Iso14443 || (ndef && tag is ICCard)) {
           if (cancellation.cancelled) break;
           return _WriteTarget(
             backend: _WriteBackend.phone,
-            tag: tag,
+            tag: tag as ICCard,
+            phoneTag: rawTag,
             channel: PhoneNfcCardChannel(),
           );
         }
@@ -262,28 +320,34 @@ class CardWriter extends Notifier<CardWriterState> {
     );
   }
 
-  String _localizedFailure(MifareWriteFailure failure) => switch (failure) {
-    MifareWriteFailure.unsupportedCard => l10n.cardWriteUnsupportedTarget,
-    MifareWriteFailure.authenticationFailed => l10n.cardWriteUnknownKey,
-    MifareWriteFailure.invalidAccessBits => l10n.cardWriteInvalidAccessBits,
-    MifareWriteFailure.permissionDenied => l10n.cardWritePermissionDenied,
-    MifareWriteFailure.cardRemoved => l10n.cardWriteCardRemoved,
-    MifareWriteFailure.verificationFailed => l10n.cardWriteVerificationFailed,
-    MifareWriteFailure.writeFailed => l10n.cardWriteFailed,
-    MifareWriteFailure.cancelled => l10n.cardWriteCancelled,
-  };
+  String _localizedFailure(MifareWriteFailure failure, {bool ndef = false}) =>
+      switch (failure) {
+        MifareWriteFailure.capacityExceeded => l10n.ndefCapacityExceeded,
+        MifareWriteFailure.unsupportedCard =>
+          ndef ? l10n.ndefUnsupportedTarget : l10n.cardWriteUnsupportedTarget,
+        MifareWriteFailure.authenticationFailed => l10n.cardWriteUnknownKey,
+        MifareWriteFailure.invalidAccessBits => l10n.cardWriteInvalidAccessBits,
+        MifareWriteFailure.permissionDenied => l10n.cardWritePermissionDenied,
+        MifareWriteFailure.cardRemoved => l10n.cardWriteCardRemoved,
+        MifareWriteFailure.verificationFailed =>
+          l10n.cardWriteVerificationFailed,
+        MifareWriteFailure.writeFailed => l10n.cardWriteFailed,
+        MifareWriteFailure.cancelled => l10n.cardWriteCancelled,
+      };
 }
 
 enum _WriteBackend { phone, reader }
 
 class _WriteTarget {
   final _WriteBackend backend;
-  final Iso14443 tag;
+  final ICCard tag;
+  final NFCTag? phoneTag;
   final NfcCardChannel channel;
 
   const _WriteTarget({
     required this.backend,
     required this.tag,
+    this.phoneTag,
     required this.channel,
   });
 }

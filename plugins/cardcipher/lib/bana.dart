@@ -44,6 +44,8 @@ class BanapassDecodedAccessCode {
 class BanapassCipher {
   const BanapassCipher._();
 
+  static bool isAvailable() => false;
+
   static BanapassDecodedSector? decodeSector(Uint8List block1) => null;
 
   static BanapassDecodedAccessCode? decodeAccessCode(String accessCode) => null;
